@@ -123,6 +123,10 @@ public class Possums_Match7_Blue_pedro_auto extends LinearOpMode {
     private int shootSubStep     = 0;
     private int currentStepIndex = 0;
 
+    // Tracks which ball lines have been picked up — used to bias gate push Y
+    private boolean line2Picked = false;
+    private boolean line3Picked = false;
+
     // =====================================================================
     //  LIMELIGHT / POSE SEEDING
     // =====================================================================
@@ -290,6 +294,8 @@ public class Possums_Match7_Blue_pedro_auto extends LinearOpMode {
                     stepDone = executeBallLineAndShootStep(action);
                 }
                 if (stepDone) {
+                    if (action == StepAction.LINE_2) line2Picked = true;
+                    if (action == StepAction.LINE_3) line3Picked = true;
                     currentStepIndex++;
                     autoSubStep    = 0;
                     isDelayRunning = false;
@@ -337,7 +343,10 @@ public class Possums_Match7_Blue_pedro_auto extends LinearOpMode {
     //  GATE STEP
     // =====================================================================
     private boolean executeGateStep() {
-        double gateY = PedroFieldConstants.BLUE_GATE_Y - (PedroRobotConstants.CHUTE_TO_PUSHER_RIGHT_IN);
+        double gateYBias = 0.0;
+        if (line2Picked && !line3Picked) gateYBias = -3.0;
+        if (line3Picked && !line2Picked) gateYBias = +3.0;
+        double gateY = PedroFieldConstants.BLUE_GATE_Y - (PedroRobotConstants.CHUTE_TO_PUSHER_RIGHT_IN) + gateYBias;
         switch (autoSubStep) {
             case 0:
                 driveToPose(BALL_LINE_CLEAR_X, gateY, 180.0, false);

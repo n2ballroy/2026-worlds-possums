@@ -64,7 +64,7 @@ public class PedroFieldConstants {
     public static final double BLUE_GATE_X = 12.0;                     // = (-72+10)+72 in
     public static final double BLUE_GATE_Y = 70.0;                     // = -2+72 in
     public static final double RED_GATE_X  = 144-10;    // ≈ 133.6 in
-    public static final double RED_GATE_Y  = 70.0;
+    public static final double RED_GATE_Y  = 71.0;
 
     // -------------------------------------------------------------------------
     // Ball field wall X (the X-axis wall the floor balls are lined against)

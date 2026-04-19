@@ -29,12 +29,18 @@ public class PossumsConstants {
     *             .drivePIDFCoefficients(new FilteredPIDFCoefficients(0.01, 0, 0.0001, 0, 0.001))
     */
    public static FollowerConstants followerConstants = new FollowerConstants()
-           .forwardZeroPowerAcceleration(-28.0)
-           .lateralZeroPowerAcceleration(-54.0)
+           .forwardZeroPowerAcceleration(-30.0)
+           .lateralZeroPowerAcceleration(-60.0)
+           .useSecondaryTranslationalPIDF(false)
+                 .useSecondaryHeadingPIDF(false)
+               .useSecondaryDrivePIDF(false)
 //     (new PredictiveBrakingCoefficients(0.2, 0.08, 0.0016)) // (kP, kLinear, kQuadratic)
-           .translationalPIDFCoefficients(new PIDFCoefficients(.03,0,0,0.04))
-           .headingPIDFCoefficients(new PIDFCoefficients(1,0,0,.03))
-           .drivePIDFCoefficients(new FilteredPIDFCoefficients(.01,0,.0001,.6,.03))  //consider  P due to strafe arrivals
+           .translationalPIDFCoefficients(new PIDFCoefficients(.08,0,0.01,0.04))
+           .headingPIDFCoefficients(new PIDFCoefficients(0.8,0,0.02,.03))
+           .drivePIDFCoefficients(new FilteredPIDFCoefficients(.015,0,.0001,.0,.001))  //consider  P due to strafe arrivals
+//           .translationalPIDFCoefficients(new PIDFCoefficients(.03,0,0,0.04))
+//           .headingPIDFCoefficients(new PIDFCoefficients(1,0,0,.03))
+//          .drivePIDFCoefficients(new FilteredPIDFCoefficients(.01,0,.0001,.6,.03))  //consider  P due to strafe arrivals
            .mass(10.6);
 
    //public static PathConstraints pathConstraints = new PathConstraints(0.99, 100, 1, 1);
@@ -63,8 +69,8 @@ public class PossumsConstants {
            1.0
    );
    public static MecanumConstants driveConstants = new MecanumConstants()
-           .xVelocity(79.24)
-           .yVelocity(59.0)
+           .xVelocity(77)
+           .yVelocity(60.0)
 
 
            .maxPower(1)

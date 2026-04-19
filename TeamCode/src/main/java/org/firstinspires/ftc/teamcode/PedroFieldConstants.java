@@ -22,7 +22,7 @@ public class PedroFieldConstants {
     // -------------------------------------------------------------------------
     // Shooting target — fixed field location the turret always faces
     // -------------------------------------------------------------------------
-    public static final double BLUE_SHOOT_TARGET_X = 11.75;
+    public static final double BLUE_SHOOT_TARGET_X = 9.75;
     public static final double RED_SHOOT_TARGET_X = 144.0-11.75;
     public static final double SHOOT_TARGET_Y = 137.5;
 
@@ -45,7 +45,7 @@ public class PedroFieldConstants {
     public static final double[] BLUE_AUDIENCE_START_POSE_2 = {FIELD_WIDTH_IN / 2.0 - 24.0 + PedroRobotConstants.ROBOT_HALF_WIDTH_IN,   AUDIENCE_WALL_START_Y, 90.0 };
 
     /** Audience-wall start, tile boundry on right side */
-    public static final double[] BLUE_AUDIENCE_START_POSE_3 = { FIELD_WIDTH_IN / 2.0 - 24.0 - PedroRobotConstants.ROBOT_HALF_WIDTH_IN + 1.0,   AUDIENCE_WALL_START_Y, 90.0 };
+    public static final double[] BLUE_AUDIENCE_START_POSE_3 = { FIELD_WIDTH_IN / 2.0 - 24.0 - PedroRobotConstants.ROBOT_HALF_WIDTH_IN + .25,   AUDIENCE_WALL_START_Y, 90.0 };
 
     /** Back-wall start  (heading 0 deg = facing right) */
     public static final double[] BLUE_BACK_WALL_START_POSE = { 29.0, BACK_WALL_START_Y, 0.0 };
@@ -54,7 +54,7 @@ public class PedroFieldConstants {
     // Autonomous shoot positions  { X_in, Y_in, headingDeg }
     // -------------------------------------------------------------------------
     public static final double[] BLUE_NEAR_SHOOT_POSE = { 54.0,  10, 105.0 };
-    public static final double[] BLUE_FAR_SHOOT_POSE  = { 53.0, 90.0, 135.0 };
+    public static final double[] BLUE_FAR_SHOOT_POSE  = { 53.0, 90.0, 180};
 
 // -------------------------------------------------------------------------
     // Gate (lever) positions

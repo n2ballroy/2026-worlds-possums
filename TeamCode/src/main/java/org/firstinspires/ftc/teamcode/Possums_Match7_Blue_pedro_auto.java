@@ -45,7 +45,7 @@ public class Possums_Match7_Blue_pedro_auto extends LinearOpMode {
 
     private static final double BALL_LINE_X_MARGIN_IN = 9.0;
 
-    private static final double INTAKE_WALL_CLEARANCE_IN = 0.5;
+    private static final double INTAKE_WALL_CLEARANCE_IN = 1.5;
 
     private static final double BALL_LINE_CLEAR_X =
               PedroFieldConstants.FLOOR_BALLS_BLUE_X
@@ -55,9 +55,9 @@ public class Possums_Match7_Blue_pedro_auto extends LinearOpMode {
     // Chute X at end of intake sweep: intake is WALL_CLEARANCE_IN from the X=0 side wall
     private static final double BALL_PICKUP_COMPLETE_X = PedroRobotConstants.CHUTE_TO_FRONT_IN + INTAKE_WALL_CLEARANCE_IN;  // 14.01 + 0.1 = 14.11
 
-    private static final double SHOOT_TRANSFER_SEC      =    3.0;
+    private static final double SHOOT_TRANSFER_SEC      =    2.5;
 
-    private static final double INTAKE_POWER            =    1.0;
+    private static final double INTAKE_POWER            =    1.0 ;
     private static final double DRIVE_TIMEOUT_SEC       =    5.0;  //if pedro path not done within 5 seconds then continue anyway
     private static final double BALL_LINE_MAX_POWER     =    0.5;  //this slows the robot way down when picking balls max=1.0
 
@@ -244,9 +244,9 @@ public class Possums_Match7_Blue_pedro_auto extends LinearOpMode {
         List<Integer> expanded = new ArrayList<>();
         for (int idx : stepOptionIndex) {
             if (STEP_OPTIONS[idx] == StepAction.TWELVE_BALL) {
-                expanded.add(StepAction.LINE_1.ordinal());
                 expanded.add(StepAction.LINE_2.ordinal());
                 expanded.add(StepAction.GATE.ordinal());
+                expanded.add(StepAction.LINE_1.ordinal());
                 expanded.add(StepAction.LINE_3.ordinal());
             } else {
                 expanded.add(idx);
@@ -318,10 +318,20 @@ public class Possums_Match7_Blue_pedro_auto extends LinearOpMode {
                 // Single timer starts when robot stops. Fire as soon as RPM and turret
                 // are both on-target, or shoot anyway when the timer expires.
                 if ((rpmReadyToShoot() && turretAtTarget())
-                        || nonBlockingDelay(PedroRobotConstants.MAX_RPM_TURRET_WAIT_SEC)) {
+                        || nonBlockingDelay(PedroRobotsConstants.MAX_RPM_TURRET_WAIT_SEC)) {
                     isDelayRunning = false;
-                    intake.setPower(INTAKE_POWER);
-                    transfer.setPower(1.0);
+
+                    if(robotY<72.0) {
+                        sleep(200);
+                        intake.setPower(.5);
+                        transfer.setPower(0.3);
+                        sleep(2000);
+                    }
+                    else{
+                        transfer.setPower(1.0);
+                        sleep(100);
+                        intake.setPower(INTAKE_POWER);
+                    }
                     shootSubStep = 1;
                 }
                 return false;
@@ -360,7 +370,7 @@ public class Possums_Match7_Blue_pedro_auto extends LinearOpMode {
                 autoSubStep = 2;
                 return false;
             case 2:
-                if (nonBlockingDelay(2.0)) {
+                if (nonBlockingDelay(.5)) {
                     isDelayRunning = false;
                     autoSubStep = isLastActionableStep() ? 99 : 3;
                 }
@@ -511,7 +521,7 @@ public class Possums_Match7_Blue_pedro_auto extends LinearOpMode {
         turretMotor.setTargetPosition(targetTicks);
     }
 
-    // =====================================================================
+    // =======================================================t==============
     //  HELPERS
     // =====================================================================
     private boolean isLastActionableStep() {
@@ -730,8 +740,8 @@ public class Possums_Match7_Blue_pedro_auto extends LinearOpMode {
         intake.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
         rightLauncher.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
         leftLauncher.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
-        rightLauncher.setVelocityPIDFCoefficients(150, 0, 0, 14);
-        leftLauncher.setVelocityPIDFCoefficients(150, 0, 0, 14);
+        rightLauncher.setVelocityPIDFCoefficients(200, 0, 0, 13);
+        leftLauncher.setVelocityPIDFCoefficients(200, 0, 0, 13);
 
         intake.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
         rightLauncher.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
@@ -760,7 +770,7 @@ public class Possums_Match7_Blue_pedro_auto extends LinearOpMode {
         double distToGoal = Math.hypot(
                 robotX - PedroFieldConstants.BLUE_SHOOT_TARGET_X,
                 robotY - PedroFieldConstants.SHOOT_TARGET_Y);  // inches
-        launcherVelocityCmd = 1160 + distToGoal * 4.5;  // ticks/sec, same formula as TeleOp
+        launcherVelocityCmd = 1160 + distToGoal * 3.75;  // ticks/sec, same formula as TeleOp
         rightLauncher.setVelocity(launcherVelocityCmd);
         leftLauncher.setVelocity(launcherVelocityCmd);
     }

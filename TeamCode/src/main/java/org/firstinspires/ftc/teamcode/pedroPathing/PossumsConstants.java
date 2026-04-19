@@ -20,6 +20,14 @@ import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 
 public class PossumsConstants {
 
+   /****example mecanum PIDs
+    * .useSecondaryTranslationalPIDF(false)
+    *             .useSecondaryHeadingPIDF(false)
+    *             .useSecondaryDrivePIDF(false)
+    *             .translationalPIDFCoefficients(new PIDFCoefficients(0.1, 0.0, 0.01, 0.03))
+    *             .headingPIDFCoefficients(new PIDFCoefficients(0.8, 0, 0.02, 0.03))
+    *             .drivePIDFCoefficients(new FilteredPIDFCoefficients(0.01, 0, 0.0001, 0, 0.001))
+    */
    public static FollowerConstants followerConstants = new FollowerConstants()
            .forwardZeroPowerAcceleration(-28.0)
            .lateralZeroPowerAcceleration(-54.0)
@@ -39,6 +47,7 @@ public class PossumsConstants {
     headingConstraint=below this radians error required to stop the path follow,
     ****the 3 above constraints must all be met before the path follow is stopped*****
     * brakingStrength= a lower value will brake harder to compensate for strafe arrivals being weaker and might not stop quick enough
+    * lower braking strength to stop overshoot
     BEZIER_CURVE_SEARCH_LIMIT=leave at 10,
     brakingStart= recommended 1 ...greater than 1 makes braking start earlier
     The BEZIER_CURVE_SEARCH_LIMIT should typically be left at 10 and shouldn't be changed.

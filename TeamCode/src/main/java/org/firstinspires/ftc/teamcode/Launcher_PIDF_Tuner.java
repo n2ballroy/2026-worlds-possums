@@ -58,7 +58,7 @@ public class Launcher_PIDF_Tuner extends LinearOpMode {
 
     // ── Test target ──────────────────────────────────────────────────────────
     private static final double TEST_RPM      = 3000.0;
-    private static final double TICKS_PER_REV = RobotConstants.LAUNCHER_MOTOR_TICKS_PER_REV;
+    private static final double TICKS_PER_REV = 28.0;
 
     // ── Candidate sweep tables ───────────────────────────────────────────────
     private static final double[] P_SWEEP = {1, 2, 4, 8, 12, 16, 20, 25, 32, 40, 50, 65, 80, 100};
@@ -157,7 +157,7 @@ public class Launcher_PIDF_Tuner extends LinearOpMode {
     private void phaseTuneF() {
         for (int iter = 0; iter < 7 && opModeIsActive(); iter++) {
             applyPIDF();
-            stepLabel    = "iteration " + (iter + 1) + " / 7   F = " + f4(tuneF);
+            stepLabel    = "iteration " + (iter + 1) + " / 7   F = " + String.format("%.4f", tuneF);
             latestMetric = "";
 
             spinDown(700);
@@ -171,7 +171,7 @@ public class Launcher_PIDF_Tuner extends LinearOpMode {
                     s.mean, errPct, s.stdDev);
 
             if (Math.abs(errPct) < F_ERR_DONE_PCT) {
-                stepLabel = "F converged at " + f4(tuneF);
+                stepLabel = "F converged at " + String.format("%.4f", tuneF);
                 break;
             }
 
@@ -196,7 +196,7 @@ public class Launcher_PIDF_Tuner extends LinearOpMode {
             if (!opModeIsActive()) return;
 
             tuneP     = candP;
-            stepLabel = "testing P = " + f4(candP);
+            stepLabel = "testing P = " + String.format("%.4f", candP);
             applyPIDF();
 
             spinDown(400);
@@ -224,7 +224,7 @@ public class Launcher_PIDF_Tuner extends LinearOpMode {
         }
 
         tuneP     = Math.max(1.0, bestP);
-        stepLabel = "P settled at " + f4(tuneP);
+        stepLabel = "P settled at " + String.format("%.4f", tuneP);
         applyPIDF();
     }
 
@@ -256,7 +256,7 @@ public class Launcher_PIDF_Tuner extends LinearOpMode {
             if (!opModeIsActive()) return;
 
             tuneD     = candD;
-            stepLabel = "testing D = " + f4(candD);
+            stepLabel = "testing D = " + String.format("%.4f", candD);
             applyPIDF();
 
             spinDown(400);
@@ -283,7 +283,7 @@ public class Launcher_PIDF_Tuner extends LinearOpMode {
         }
 
         tuneD     = bestD;
-        stepLabel = "D settled at " + f4(tuneD);
+        stepLabel = "D settled at " + String.format("%.4f", tuneD);
         applyPIDF();
     }
 
@@ -360,8 +360,8 @@ public class Launcher_PIDF_Tuner extends LinearOpMode {
 
                 tuneI = candI;
                 applyPIDF();
-                stepLabel = String.format("P=%.0f  I=%s  (F×%.0f%%)",
-                        candP, f5(candI), BATTERY_STRESS_FACTOR * 100);
+                stepLabel = String.format("P=%.0f  I=%.5f  (F×%.0f%%)",
+                        candP, candI, BATTERY_STRESS_FACTOR * 100);
 
                 spinDown(500);
                 if (!opModeIsActive()) break outer;
@@ -428,8 +428,8 @@ public class Launcher_PIDF_Tuner extends LinearOpMode {
     // ═════════════════════════════════════════════════════════════════════════
 
     private void initMotors() {
-        rightLauncher = hardwareMap.get(DcMotorEx.class, RobotConstants.RIGHT_LAUNCHER_CONFIG_NAME);
-        leftLauncher  = hardwareMap.get(DcMotorEx.class, RobotConstants.LEFT_LAUNCHER_CONFIG_NAME);
+        rightLauncher = hardwareMap.get(DcMotorEx.class, PedroRobotConstants.RIGHT_LAUNCHER_CONFIG_NAME);
+        leftLauncher  = hardwareMap.get(DcMotorEx.class, PedroRobotConstants.LEFT_LAUNCHER_CONFIG_NAME);
         rightLauncher.setDirection(DcMotorEx.Direction.REVERSE);
         leftLauncher.setDirection(DcMotorEx.Direction.FORWARD);
         rightLauncher.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
@@ -597,10 +597,10 @@ public class Launcher_PIDF_Tuner extends LinearOpMode {
         telemetry.addData("RPM Actual", "%.0f  /  %.0f target", launcherRPMActual, TEST_RPM);
         telemetry.addData("RPM Error",  "%+.0f", launcherRPMActual - TEST_RPM);
         telemetry.addLine();
-        telemetry.addData("F", f4(tuneF));
-        telemetry.addData("P", f4(tuneP));
-        telemetry.addData("I", f5(tuneI));
-        telemetry.addData("D", f4(tuneD));
+        telemetry.addData("F", String.format("%.4f", tuneF));
+        telemetry.addData("P", String.format("%.4f", tuneP));
+        telemetry.addData("I", String.format("%.5f", tuneI));
+        telemetry.addData("D", String.format("%.4f", tuneD));
         telemetry.update();
     }
 
@@ -608,10 +608,10 @@ public class Launcher_PIDF_Tuner extends LinearOpMode {
         telemetry.addLine("══════════ TUNING COMPLETE ══════════");
         telemetry.addLine("Copy these values into Demo_teleop:");
         telemetry.addLine();
-        telemetry.addData("LAUNCHER_VEL_F", f4(tuneF));
-        telemetry.addData("LAUNCHER_VEL_P", f4(tuneP));
-        telemetry.addData("LAUNCHER_VEL_I", f5(tuneI));
-        telemetry.addData("LAUNCHER_VEL_D", f4(tuneD));
+        telemetry.addData("LAUNCHER_VEL_F", String.format("%.4f", tuneF));
+        telemetry.addData("LAUNCHER_VEL_P", String.format("%.4f", tuneP));
+        telemetry.addData("LAUNCHER_VEL_I", String.format("%.5f", tuneI));
+        telemetry.addData("LAUNCHER_VEL_D", String.format("%.4f", tuneD));
         telemetry.addLine();
         telemetry.addLine("── Final step-response metrics ──");
         telemetry.addData("Steady-state error", "%+.0f RPM", finalSteadyErr);
@@ -623,10 +623,4 @@ public class Launcher_PIDF_Tuner extends LinearOpMode {
         telemetry.update();
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    // Formatting
-    // ═════════════════════════════════════════════════════════════════════════
-
-    private static String f4(double v) { return String.format("%.4f", v); }
-    private static String f5(double v) { return String.format("%.5f", v); }
 }

@@ -18,16 +18,15 @@ import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 @TeleOp(name = "MainTeleOpBlueAutoPinpoint")
 public class MainTeleOpBlueAutoPinpoint extends LinearOpMode {
 
-    private DcMotor Rightshooter;
-    private DcMotor Leftshooter;
-    private CRServo transfer;
-    private DcMotor turret;
-    private DcMotor frontLeft;
-    private DcMotor backLeft;
-    private DcMotor backRight;
-    private DcMotor frontright;
-    private DcMotor intake;
-    private CRServo middle;
+    private DcMotorEx Rightshooter;
+    private DcMotorEx Leftshooter;
+    private CRServo   transfer;
+    private DcMotorEx turret;
+    private DcMotor   frontLeft;
+    private DcMotor   backLeft;
+    private DcMotor   backRight;
+    private DcMotor   frontright;
+    private DcMotorEx intake;
     private GoBildaPinpointDriver pinpointOdometry;
 
     private Servo prism;
@@ -68,10 +67,10 @@ public class MainTeleOpBlueAutoPinpoint extends LinearOpMode {
         boolean prevStart = false;
         ElapsedTime dpadTimer = new ElapsedTime();
 
-        Rightshooter = hardwareMap.get(DcMotor.class, PedroRobotConstants.RIGHT_LAUNCHER_CONFIG_NAME);
-        Leftshooter = hardwareMap.get(DcMotor.class, PedroRobotConstants.LEFT_LAUNCHER_CONFIG_NAME);
-        turret = hardwareMap.get(DcMotor.class, PedroRobotConstants.TURRET_MOTOR_CONFIG_NAME);
-        intake = hardwareMap.get(DcMotor.class, PedroRobotConstants.INTAKE_CONFIG_NAME);
+        Rightshooter = hardwareMap.get(DcMotorEx.class, PedroRobotConstants.RIGHT_LAUNCHER_CONFIG_NAME);
+        Leftshooter  = hardwareMap.get(DcMotorEx.class, PedroRobotConstants.LEFT_LAUNCHER_CONFIG_NAME);
+        turret       = hardwareMap.get(DcMotorEx.class, PedroRobotConstants.TURRET_MOTOR_CONFIG_NAME);
+        intake       = hardwareMap.get(DcMotorEx.class, PedroRobotConstants.INTAKE_CONFIG_NAME);
         transfer = hardwareMap.get(CRServo.class, PedroRobotConstants.TRANSFER_SERVO_CONFIG_NAME);
         prism = hardwareMap.get(Servo.class, "prism");
         pinpointOdometry = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
@@ -97,8 +96,8 @@ public class MainTeleOpBlueAutoPinpoint extends LinearOpMode {
         // stationary. Device takes a large number of samples, and uses those
         // as the gyroscope zero-offset. This takes approximately 0.25 seconds.
         pinpointOdometry.recalibrateIMU();
-        ((DcMotorEx) Rightshooter).setVelocityPIDFCoefficients(150, 0, 0, 14);
-        ((DcMotorEx) Leftshooter).setVelocityPIDFCoefficients(150, 0, 0, 14);
+        Rightshooter.setVelocityPIDFCoefficients(150, 0, 0, 14);
+        Leftshooter.setVelocityPIDFCoefficients(150, 0, 0, 14);
         transfer.setDirection(CRServo.Direction.REVERSE);
         Leftshooter.setDirection(DcMotor.Direction.FORWARD);
         Rightshooter.setDirection(DcMotor.Direction.REVERSE);
@@ -112,14 +111,14 @@ public class MainTeleOpBlueAutoPinpoint extends LinearOpMode {
         // forward from the tracking point the Y (strafe) odometry pod is. Forward increases
         //pinpointOdometry.offsets(DistanceUnit.INCH, 1.875, 7.5);
         //pinpointOdometry.setOffsets(RobotConstants.Y_OFFSET_TO_X_DEADWHEEL_MM, RobotConstants.X_OFFSET_TO_Y_DEADWHEEL_MM, ODOMETRY_DISTANCE_UNIT);  //see gobilda pinpoint manual
-        pinpointOdometry.setOffsets(1.0,7.5,DistanceUnit.INCH);  //see gobilda pinpoint manual
+        pinpointOdometry.setOffsets(-5.46,-2.7,DistanceUnit.INCH);  //see gobilda pinpoint manual
         Shooter_Speed = 1600;
         Goal_X = PedroFieldConstants.BLUE_SHOOT_TARGET_X;
         Goal_Y = PedroFieldConstants.SHOOT_TARGET_Y;
         Delta__X_ = 0;
         Delta__Y_ = 0;
         Aim = 0;
-        ((DcMotorEx) turret).setPositionPIDFCoefficients(12.5);
+        turret.setPositionPIDFCoefficients(12.5);
         transfer.setDirection(CRServo.Direction.REVERSE);
         turret.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         frontLeft.setDirection(DcMotor.Direction.FORWARD);
@@ -127,11 +126,11 @@ public class MainTeleOpBlueAutoPinpoint extends LinearOpMode {
         backRight.setDirection(DcMotor.Direction.REVERSE);
         frontright.setDirection(DcMotor.Direction.REVERSE);
         telemetry.setMsTransmissionInterval(11);
-        ((DcMotorEx) turret).setVelocity(1800);
+        turret.setVelocity(1800);
         turret.setTargetPosition(0);
         turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         turret.setTargetPosition(0);
-        ((DcMotorEx) turret).setTargetPositionTolerance(0);
+        turret.setTargetPositionTolerance(0);
         Offset = 0;
 
         if (QuickOdometryStorage.valid) {
@@ -156,7 +155,7 @@ public class MainTeleOpBlueAutoPinpoint extends LinearOpMode {
         while (opModeIsActive()) {
             // Call the automated timer method
             prismTimer();
-            ((DcMotorEx) turret).setVelocity(1800);
+            turret.setVelocity(1800);
             Y = gamepad1.left_stick_y;
             X = gamepad1.left_stick_x;
             RX = gamepad1.right_stick_x;
@@ -172,7 +171,7 @@ public class MainTeleOpBlueAutoPinpoint extends LinearOpMode {
             Delta__Y_ = Goal_Y - pinpointOdometry.getPosY(DistanceUnit.INCH);
             Target_Heading = Math.atan2(Delta__Y_, Delta__X_) / Math.PI * 180;
             Distance = Math.sqrt(Math.pow(Delta__X_, 2) + Math.pow(Delta__Y_, 2));
-            Shooter_Speed = (int) (1160 + Distance * 3.5);
+            Shooter_Speed = (int) (1160 + Distance * 3.75);
             if ((gamepad1.dpad_left || gamepad1.dpad_right) && dpadTimer.milliseconds() > 150) {
                 if (gamepad1.dpad_left) {
                     Offset++;
@@ -195,13 +194,18 @@ public class MainTeleOpBlueAutoPinpoint extends LinearOpMode {
             double headingError = Math.toDegrees(Math.atan2(Math.sin(rawError), Math.cos(rawError)));
             Target_Ticks = PedroRobotConstants.TURRET_TICKS_PER_DEG * headingError;
             if (gamepad1.right_bumper) {
-                intake.setPower(0.8);
-                middle.setPower(1);
-                transfer.setPower(1);
+                if (Y_Pinpoint < 72.0) {
+                    // Near shooting position — lower power to match auto behavior
+                    intake.setPower(0.5);
+                    transfer.setPower(0.3);
+                } else {
+                    // Far shooting position — full power
+                    intake.setPower(0.8);
+                    transfer.setPower(1.0);
+                }
             } else {
                 intake.setPower(gamepad1.left_trigger - gamepad1.right_trigger);
-                middle.setPower(gamepad1.left_trigger - gamepad1.right_trigger);
-                transfer.setPower(0);
+                transfer.setPower(gamepad1.left_trigger - gamepad1.right_trigger);
             }
             if (gamepad1.a && !prevA) {
                 if (Aim == 0) {
@@ -221,11 +225,11 @@ public class MainTeleOpBlueAutoPinpoint extends LinearOpMode {
                 Shoot = 0;
             }
             if (Shoot == 1) {
-                ((DcMotorEx) Leftshooter).setVelocity(Shooter_Speed);
-                ((DcMotorEx) Rightshooter).setVelocity(Shooter_Speed);
+                Leftshooter.setVelocity(Shooter_Speed);
+                Rightshooter.setVelocity(Shooter_Speed);
             } else {
-                ((DcMotorEx) Rightshooter).setVelocity(0);
-                ((DcMotorEx) Leftshooter).setVelocity(0);
+                Rightshooter.setVelocity(0);
+                Leftshooter.setVelocity(0);
             }
             frontLeft.setPower((Y - X) - RX);
             backLeft.setPower((Y + X) - RX);
@@ -241,7 +245,7 @@ public class MainTeleOpBlueAutoPinpoint extends LinearOpMode {
             telemetry.addData("X", pinpointOdometry.getPosX(DistanceUnit.INCH));
             // Returns y position the unit of your choice
             telemetry.addData("Y", pinpointOdometry.getPosY(DistanceUnit.INCH));
-            telemetry.addData("Left velo", ((DcMotorEx) Leftshooter).getVelocity());
+            telemetry.addData("Left velo", Leftshooter.getVelocity());
             telemetry.update();
             prevA = gamepad1.a;
             prevStart = gamepad1.start;

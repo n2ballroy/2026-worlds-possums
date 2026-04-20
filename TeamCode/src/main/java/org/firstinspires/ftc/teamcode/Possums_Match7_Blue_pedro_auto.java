@@ -13,7 +13,11 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.qualcomm.robotcore.util.ElapsedTime;
+
+import java.io.PrintWriter;
 
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.teamcode.pedroPathing.PossumsConstants;
@@ -56,6 +60,28 @@ public class Possums_Match7_Blue_pedro_auto extends LinearOpMode {
     private static final double BALL_PICKUP_COMPLETE_X = PedroRobotConstants.CHUTE_TO_FRONT_IN + INTAKE_WALL_CLEARANCE_IN;  // 14.01 + 0.1 = 14.11
 
     private static final double SHOOT_TRANSFER_SEC      =    2.5;
+
+    // =====================================================================
+    //  LAUNCHER LOGGING — set to true to enable, false to disable
+    //
+    //  DASHBOARD (live graph):
+    //    1. Sync Gradle, deploy to robot
+    //    2. Connect laptop to Control Hub WiFi
+    //    3. Open browser to 192.168.43.1:8080/dash
+    //    4. Run auto — graphs for cmd/right/left ticks/sec appear live
+    //    NOTE: data is lost when OpMode stops; use CSV for post-run analysis
+    //
+    //  CSV FILE (post-run analysis):
+    //    1. Run the auto
+    //    2. Connect laptop to Control Hub via USB
+    //    3. In Android Studio terminal run:
+    //         adb pull /sdcard/FIRST/launcher_log.csv
+    //    4. Open launcher_log.csv in Excel or Google Sheets and chart columns
+    //    NOTE: each run overwrites the previous file
+    //
+    //  TO DISABLE FOR COMPETITION: set LAUNCHER_LOGGING_ENABLED = false
+    // =====================================================================
+    private static final boolean LAUNCHER_LOGGING_ENABLED = true;
 
     private static final double INTAKE_POWER            =    1.0 ;
     private static final double DRIVE_TIMEOUT_SEC       =    5.0;  //if pedro path not done within 5 seconds then continue anyway
@@ -103,7 +129,9 @@ public class Possums_Match7_Blue_pedro_auto extends LinearOpMode {
     // =====================================================================
     //  LAUNCHER
     // =====================================================================
-    private double launcherVelocityCmd = 0;  // ticks/sec
+    private double      launcherVelocityCmd = 0;  // ticks/sec
+    private PrintWriter launcherLog         = null;
+    private ElapsedTime logTimer            = new ElapsedTime();
 
     // =====================================================================
     //  TIMING / STATE
@@ -180,6 +208,7 @@ public class Possums_Match7_Blue_pedro_auto extends LinearOpMode {
                 updateTurret();
                 if (autoPhase < 99) updateLauncher();
                 runAutonomousSequence();
+                updateLogging();
                 displayTelemetry();
             }
         } finally {
@@ -315,27 +344,48 @@ public class Possums_Match7_Blue_pedro_auto extends LinearOpMode {
     private boolean executeShootSequence() {
         switch (shootSubStep) {
             case 0:
-                // Single timer starts when robot stops. Fire as soon as RPM and turret
-                // are both on-target, or shoot anyway when the timer expires.
+                // Wait for RPM and turret on-target, or proceed after timeout
                 if ((rpmReadyToShoot() && turretAtTarget())
                         || nonBlockingDelay(PedroRobotConstants.MAX_RPM_TURRET_WAIT_SEC)) {
                     isDelayRunning = false;
-
-                    if(robotY<72.0) {
-                        sleep(200);
-                        intake.setPower(.5);
-                        transfer.setPower(0.3);
-                        sleep(2000);
+                    if (robotY < 72.0) {
+                        shootSubStep = 1;   // near: 200ms startup delay before motors and slower intake
+                    } else {
+                        shootSubStep = 3;   // far: 100ms delay then start transfer and intake
                     }
-                    else{
-                        transfer.setPower(1.0);
-                        sleep(100);
-                        intake.setPower(INTAKE_POWER);
-                    }
-                    shootSubStep = 1;
                 }
                 return false;
+
             case 1:
+                // Near position — 200ms pause before starting motors for far shot
+                if (nonBlockingDelay(0.2)) {
+                    isDelayRunning = false;
+                    intake.setPower(0.5);
+                    transfer.setPower(0.3);
+                    shootSubStep = 2;
+                }
+                return false;
+
+            case 2:
+                // Near position — 2000ms feed window
+                if (nonBlockingDelay(2.0)) {
+                    isDelayRunning = false;
+                    shootSubStep = 10;
+                }
+                return false;
+
+            case 3:
+                // Far position— 100ms delay then  transfer starts, then start intake full power
+                if (nonBlockingDelay(0.1)) {
+                    isDelayRunning = false;
+                    transfer.setPower(1.0);
+                    intake.setPower(INTAKE_POWER);
+                    shootSubStep = 10;
+                }
+                return false;
+
+            case 10:
+                // Both paths — final transfer window then stop
                 if (nonBlockingDelay(SHOOT_TRANSFER_SEC)) {
                     isDelayRunning = false;
                     intake.setPower(0);
@@ -344,6 +394,7 @@ public class Possums_Match7_Blue_pedro_auto extends LinearOpMode {
                     return true;
                 }
                 return false;
+
             default:
                 return true;
         }
@@ -756,6 +807,16 @@ public class Possums_Match7_Blue_pedro_auto extends LinearOpMode {
         // NOTE: setPower(1.0) intentionally deferred until after waitForStart()
 
         follower = PossumsConstants.createFollower(hardwareMap);
+
+        if (LAUNCHER_LOGGING_ENABLED) {
+            try {
+                launcherLog = new PrintWriter("/sdcard/FIRST/launcher_log.csv");
+                launcherLog.println("time_sec,cmd,right,left,transfer_pwr,intake_pwr,intake_vel");
+                logTimer.reset();
+            } catch (Exception e) {
+                launcherLog = null;
+            }
+        }
     }
 
     // =====================================================================
@@ -775,6 +836,35 @@ public class Possums_Match7_Blue_pedro_auto extends LinearOpMode {
         leftLauncher.setVelocity(launcherVelocityCmd);
     }
 
+    // =====================================================================
+    //  LOGGING — called every loop iteration regardless of auto phase
+    // =====================================================================
+    private void updateLogging() {
+        if (!LAUNCHER_LOGGING_ENABLED) return;
+
+        double right       = rightLauncher.getVelocity();
+        double left        = leftLauncher.getVelocity();
+        double transferPwr = transfer.getPower();
+        double intakePwr   = intake.getPower();
+        double intakeVel   = intake.getVelocity();
+
+        // Dashboard — live graph at 192.168.43.1:8080/dash while robot is running
+        TelemetryPacket packet = new TelemetryPacket();
+        packet.put("cmd (ticks/s)",   launcherVelocityCmd);
+        packet.put("right (ticks/s)", right);
+        packet.put("left (ticks/s)",  left);
+        packet.put("transfer pwr",    transferPwr);
+        packet.put("intake pwr",      intakePwr);
+        packet.put("intake vel",      intakeVel);
+        FtcDashboard.getInstance().sendTelemetryPacket(packet);
+
+        // CSV — pull after run with: adb pull /sdcard/FIRST/launcher_log.csv
+        if (launcherLog != null)
+            launcherLog.printf("%.3f,%.0f,%.0f,%.0f,%.2f,%.2f,%.0f%n",
+                    logTimer.seconds(), launcherVelocityCmd, right, left,
+                    transferPwr, intakePwr, intakeVel);
+    }
+
     private void stopRobot() {
         follower.breakFollowing();
         launcherVelocityCmd = 0;
@@ -789,6 +879,8 @@ public class Possums_Match7_Blue_pedro_auto extends LinearOpMode {
         QuickOdometryStorage.turretDegrees = turretAngleDeg;
         QuickOdometryStorage.alliance      = "BLUE";
         QuickOdometryStorage.valid         = true;
+
+        if (launcherLog != null) { launcherLog.flush(); launcherLog.close(); }
     }
 
     private boolean nonBlockingDelay(double sec) {

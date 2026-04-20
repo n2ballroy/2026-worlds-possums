@@ -12,30 +12,37 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.JavaUtil;
-import org.firstinspires.ftc.teamcode.PedroFieldConstants;
-import org.firstinspires.ftc.teamcode.PedroRobotConstants;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 
 /**
- * Same as MainTeleOpBlueAutoPinpoint but START button reseeds pinpoint from
- * a single valid Limelight frame rather than resetting to the corner.
+ * Alliance-aware TeleOp with Limelight pinpoint reseeding on START.
+ *
+ * TO CREATE RED VERSION: copy this file, then make exactly these 3 changes:
+ *   1. Rename file and class to Worlds_2Color_Red_TeleOp
+ *   2. Change @TeleOp: name="Worlds_2Color_Red_TeleOp"
+ *   3. Change:  private static final boolean BLUE_ALLIANCE = false;
+ * No other code changes are needed.
  *
  * GAMEPAD1 START — point camera at a visible AprilTag and press START.
  *   The robot waits up to 2 seconds for a valid tagged frame, then reseeds
- *   X, Y, and heading from the Limelight botpose.  Telemetry confirms the
- *   new position or reports the failure reason.
+ *   X, Y, and heading from the Limelight botpose.
  *
- * Coordinate conversion (same as auto):
- *   Pinpoint X (in) = limelight_Y (m) * 39.37 + 72 + 4   (4" empirical correction)
+ * Coordinate conversion:
+ *   Pinpoint X (in) = limelight_Y (m) * 39.37 + 72
  *   Pinpoint Y (in) = -limelight_X (m) * 39.37 + 72
  *   Heading (deg)   = limelight_yaw - 90
  *   Both systems CCW-positive. Limelight 0° = audience wall = Pedro +Y = Pedro 90°.
  *   Pedro 0° = blue wall = Limelight +Y = Limelight 90°. Offset = -90°.
+ *   This conversion is alliance-independent (both use absolute field coordinates).
  */
-@TeleOp(name = "MainTeleOpBlueLLReset", group = "TeleOp")
-public class MainTeleOpBlueLLReset extends LinearOpMode {
+// *** RED VERSION: change name="Worlds_2Color_Red_TeleOp" ***
+@TeleOp(name = "Worlds_2Color_Blue_TeleOp", group = "TeleOp")
+public class Worlds_2Color_Blue_TeleOp extends LinearOpMode {
+
+    // *** ONLY LINE TO CHANGE FOR RED ALLIANCE ***
+    private static final boolean BLUE_ALLIANCE = true;
 
     private DcMotorEx Rightshooter;
     private DcMotorEx Leftshooter;
@@ -62,9 +69,13 @@ public class MainTeleOpBlueLLReset extends LinearOpMode {
 
     @Override
     public void runOpMode() {
+        // Alliance-specific shoot target X — only conditional in this file
+        double Goal_X = BLUE_ALLIANCE
+                ? PedroFieldConstants.BLUE_SHOOT_TARGET_X
+                : PedroFieldConstants.RED_SHOOT_TARGET_X;
+
+        double Goal_Y     = PedroFieldConstants.SHOOT_TARGET_Y;
         int    Shooter_Speed;
-        double Goal_X;
-        double Goal_Y;
         double Delta__X_;
         double Delta__Y_;
         int    Aim;
@@ -83,14 +94,14 @@ public class MainTeleOpBlueLLReset extends LinearOpMode {
         boolean prevStart = false;
         ElapsedTime dpadTimer = new ElapsedTime();
 
-        Rightshooter     = hardwareMap.get(DcMotorEx.class,           PedroRobotConstants.RIGHT_LAUNCHER_CONFIG_NAME);
-        Leftshooter      = hardwareMap.get(DcMotorEx.class,           PedroRobotConstants.LEFT_LAUNCHER_CONFIG_NAME);
-        turret           = hardwareMap.get(DcMotorEx.class,           PedroRobotConstants.TURRET_MOTOR_CONFIG_NAME);
-        intake           = hardwareMap.get(DcMotorEx.class,           PedroRobotConstants.INTAKE_CONFIG_NAME);
-        transfer         = hardwareMap.get(CRServo.class,             PedroRobotConstants.TRANSFER_SERVO_CONFIG_NAME);
-        prism            = hardwareMap.get(Servo.class,               "prism");
-        pinpointOdometry = hardwareMap.get(GoBildaPinpointDriver.class,"pinpoint");
-        limelight        = hardwareMap.get(Limelight3A.class,         "limelight");
+        Rightshooter     = hardwareMap.get(DcMotorEx.class,            PedroRobotConstants.RIGHT_LAUNCHER_CONFIG_NAME);
+        Leftshooter      = hardwareMap.get(DcMotorEx.class,            PedroRobotConstants.LEFT_LAUNCHER_CONFIG_NAME);
+        turret           = hardwareMap.get(DcMotorEx.class,            PedroRobotConstants.TURRET_MOTOR_CONFIG_NAME);
+        intake           = hardwareMap.get(DcMotorEx.class,            PedroRobotConstants.INTAKE_CONFIG_NAME);
+        transfer         = hardwareMap.get(CRServo.class,              PedroRobotConstants.TRANSFER_SERVO_CONFIG_NAME);
+        prism            = hardwareMap.get(Servo.class,                "prism");
+        pinpointOdometry = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
+        limelight        = hardwareMap.get(Limelight3A.class,          "limelight");
 
         frontLeft  = hardwareMap.get(DcMotor.class, "right_rear_drive");
         backLeft   = hardwareMap.get(DcMotor.class, "right_front_drive");
@@ -113,8 +124,6 @@ public class MainTeleOpBlueLLReset extends LinearOpMode {
         Rightshooter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         Shooter_Speed = 1600;
-        Goal_X  = PedroFieldConstants.BLUE_SHOOT_TARGET_X;
-        Goal_Y  = PedroFieldConstants.SHOOT_TARGET_Y;
         Delta__X_ = 0;
         Delta__Y_ = 0;
         Aim    = 0;
@@ -244,7 +253,7 @@ public class MainTeleOpBlueLLReset extends LinearOpMode {
     /**
      * Waits up to 2 seconds for a valid Limelight frame with at least one AprilTag.
      * On success, reseeds pinpoint X, Y, and heading from the botpose.
-     * On timeout, leaves pinpoint unchanged and reports the failure reason.
+     * Limelight WCS → Pedro conversion is alliance-independent (both are absolute field coords).
      */
     private void reseedFromLimelight() {
         long deadline = System.currentTimeMillis() + 2000;
@@ -255,18 +264,11 @@ public class MainTeleOpBlueLLReset extends LinearOpMode {
                     && result.getBotposeTagCount() > 0) {
 
                 Pose3D botpose = result.getBotpose();
-                double llX = botpose.getPosition().x;   // meters, WCS
-                double llY = botpose.getPosition().y;   // meters, WCS
+                double llX = botpose.getPosition().x;
+                double llY = botpose.getPosition().y;
 
-                // Convert Limelight WCS (meters) to Pinpoint inches
-                // Same formula used in auto pose seeding
-                double pinX = llY * 39.37 + 72.0;
-                double pinY = -llX * 39.37 + 72.0;
-
-                // Heading: both systems CCW-positive but axes are 90° apart.
-                // Limelight 0° = toward audience wall = Pedro +Y = Pedro 90°
-                // Pedro 0°     = toward blue wall     = Limelight +Y = Limelight 90°
-                // Therefore: Pedro heading = Limelight_yaw - 90°
+                double pinX   = llY * 39.37 + 72.0;
+                double pinY   = -llX * 39.37 + 72.0;
                 double llYaw  = botpose.getOrientation().getYaw(AngleUnit.DEGREES);
                 double heading = llYaw - 90.0;
 
@@ -281,7 +283,6 @@ public class MainTeleOpBlueLLReset extends LinearOpMode {
             }
             sleep(33);
         }
-        // Timed out — report why the last result was rejected
         LLResult last = limelight.getLatestResult();
         String reason = last == null                    ? "null result"
                       : !last.isValid()                ? "isValid=false"

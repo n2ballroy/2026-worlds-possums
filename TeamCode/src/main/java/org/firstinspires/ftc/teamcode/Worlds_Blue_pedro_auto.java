@@ -9,6 +9,7 @@ import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -45,6 +46,7 @@ import java.util.List;
  */
 //@TeleOp(name = "Match7_Pedro_Auto", group = "Match")
 @Autonomous(name = "Worlds_Blue_Pedro_Auto", preselectTeleOp = "MainTeleOpBlueLLReset", group = "Match")
+@Disabled
 public class Worlds_Blue_pedro_auto extends LinearOpMode {
 
     private static final double BALL_LINE_X_MARGIN_IN = 9.0;

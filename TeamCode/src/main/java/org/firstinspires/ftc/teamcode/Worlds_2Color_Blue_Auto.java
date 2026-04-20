@@ -9,60 +9,70 @@ import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
+import java.io.PrintWriter;
 
-import org.firstinspires.ftc.teamcode.pedroPathing.SealsConstants;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
+import org.firstinspires.ftc.teamcode.pedroPathing.PossumsConstants;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Match7_pedro_auto — BLUE alliance, configurable step sequence.
+ * Alliance-aware autonomous — configurable step sequence.
  *
- * Changes from Match6:
- *  - All field coordinates come from FieldConstants (inches, audience-wall-corner origin).
- *  - All robot geometry comes from RobotConstants (inches).
- *  - Chute outlet is the robot reference point (0,0).
- *  - Camera pose seeding: averaged X/Y from limelight is compared against 4 predefined
- *    start poses; the closest pose is used to seed pinpoint (no std-dev gating needed).
- *  - Turret servo: always rotates toward PedroFieldConstants.SHOOT_TARGET_X/Y.
- *    Turret encoder resets to 0 at match start (robot pre-positioned facing forward).
+ * TO CREATE RED VERSION: copy this file, then make exactly these 3 changes:
+ *   1. Rename file and class to Worlds_2Color_Red_Auto
+ *   2. Change @Autonomous: name="Worlds_2Color_Red_Auto", preselectTeleOp="Worlds_2Color_Red_TeleOp"
+ *   3. Change:  private static final boolean BLUE_ALLIANCE = false;
+ * No other code changes are needed.
  *
  * PRE-START MENU (gamepad1):
  *   DPAD UP / DOWN    — select which step row to edit
  *   DPAD RIGHT / LEFT — cycle the action for the selected step
- *   A button          — confirm the selected step
  *   START             — lock in sequence and proceed to limelight seeding
  */
-//@TeleOp(name = "Match7_Pedro_Auto", group = "Match")
-@Autonomous(name = "Seals Match7_Blue_Pedro_Auto", preselectTeleOp = "MainTeleOpBlueAutoPinpoint", group = "Match")
-@Disabled
-public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
+@Autonomous(name = "Worlds_2Color_Blue_Auto", preselectTeleOp = "Worlds_2Color_Blue_TeleOp", group = "Match")
+public class Worlds_2Color_Blue_Auto extends LinearOpMode {
 
-    private static final double BALL_LINE_X_MARGIN_IN = 2.0;
+    // *** ONLY LINE TO CHANGE FOR RED ALLIANCE ***
+    private static final boolean BLUE_ALLIANCE = true;
 
-    private static final double INTAKE_WALL_CLEARANCE_IN = 0.1;
+    // =====================================================================
+    //  LAUNCHER LOGGING — set to true to enable, false to disable
+    //
+    //  DASHBOARD (live graph):
+    //    1. Sync Gradle, deploy to robot
+    //    2. Connect laptop to Control Hub WiFi
+    //    3. Open browser to 192.168.43.1:8080/dash
+    //    4. Run auto — graphs for cmd/right/left ticks/sec appear live
+    //    NOTE: data is lost when OpMode stops; use CSV for post-run analysis
+    //
+    //  CSV FILE (post-run analysis):
+    //    1. Run the auto
+    //    2. Connect laptop to Control Hub via USB
+    //    3. In Android Studio terminal run:
+    //         adb pull /sdcard/FIRST/launcher_log.csv
+    //    4. Open launcher_log.csv in Excel or Google Sheets and chart columns
+    //    NOTE: each run overwrites the previous file
+    //
+    //  TO DISABLE FOR COMPETITION: set LAUNCHER_LOGGING_ENABLED = false
+    // =====================================================================
+    private static final boolean LAUNCHER_LOGGING_ENABLED = true;
 
-    private static final double BALL_LINE_CLEAR_X =
-              PedroFieldConstants.FLOOR_BALLS_BLUE_X
-            + BALL_LINE_X_MARGIN_IN
-            + PedroRobotConstants.CHUTE_TO_FRONT_IN;   // 32 + 2 + 14.01 = 48.01
-
-    // Chute X at end of intake sweep: intake is WALL_CLEARANCE_IN from the X=0 side wall
-    private static final double BALL_PICKUP_COMPLETE_X = PedroRobotConstants.CHUTE_TO_FRONT_IN + INTAKE_WALL_CLEARANCE_IN;  // 14.01 + 0.1 = 14.11
-
-    private static final double SHOOT_TRANSFER_SEC      =    3.0;
-
-    private static final double INTAKE_POWER            =    1.0;
-    private static final double DRIVE_TIMEOUT_SEC       =    5.0;  //if pedro path not done within 5 seconds then continue anyway
-    private static final double BALL_LINE_MAX_POWER     =    0.5;  //this slows the robot way down when picking balls max=1.0
+    private static final double INTAKE_POWER             = 1.0;
+    private static final double DRIVE_TIMEOUT_SEC        = 5.0;
+    private static final double BALL_LINE_MAX_POWER      = 0.5;
+    private static final double SHOOT_TRANSFER_SEC       = 2.5;
+    private static final double BALL_LINE_X_MARGIN_IN    = 9.0;
+    private static final double INTAKE_WALL_CLEARANCE_IN = 1.5;
 
     // =====================================================================
     //  STEP CONFIGURATION
@@ -78,28 +88,36 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
     private int           currentMenuStepIndex = 0;
     private List<Integer> stepOptionIndex      = new ArrayList<>();
 
-    // BALL_WALL_CLEAR_X is also the safe back-out X (intake clears ball wall by margin)
-
-    // Ball line Y values array for avoidance checks
-    private static final double[] BALL_LINE_Y_POSITIONS = {
-            PedroFieldConstants.BALL_LINE_1_Y,
-            PedroFieldConstants.BALL_LINE_2_Y,
-            PedroFieldConstants.BALL_LINE_3_Y };
+    // =====================================================================
+    //  ALLIANCE-SPECIFIC VALUES — set once in initAllianceConstants()
+    //  All field coordinates and headings that differ between Blue and Red
+    //  live here; the rest of the code references these fields only.
+    // =====================================================================
+    private double     shootTargetX;
+    private double[]   nearShootPose;
+    private double[]   farShootPose;
+    private double     gateX;
+    private double     gateY;
+    private double     gatePushX;           // chute-tracking X to press the gate lever
+    private double     ballLineClearX;      // safe X to approach a ball line from
+    private double     ballPickupCompleteX; // X after sweeping through all balls
+    private double     gateHeading;         // robot heading while pushing gate (deg)
+    private double     pickupHeading;       // robot heading during ball-line intake (deg)
+    private double[][] startPoses;          // 4 predefined start poses for Limelight snap
+    private String     allianceName;
 
     // =====================================================================
     //  HARDWARE
     // =====================================================================
-    private DcMotorEx       intake;
-    private CRServo         transfer;
-    private DcMotorEx       rightLauncher, leftLauncher;
-    private DcMotorEx       turretMotor;
-    private Limelight3A     limelight;
-
-    // Pedro Pathing follower — owns drive motors and pinpoint
-    private Follower follower;
+    private DcMotorEx   intake;
+    private CRServo     transfer;
+    private DcMotorEx   rightLauncher, leftLauncher;
+    private DcMotorEx   turretMotor;
+    private Limelight3A limelight;
+    private Follower    follower;
 
     // =====================================================================
-    //  POSE (read from Pedro)
+    //  POSE
     // =====================================================================
     private double robotX, robotY, robotHeading;
     private double initialRobotY = 0;
@@ -112,7 +130,9 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
     // =====================================================================
     //  LAUNCHER
     // =====================================================================
-    private double launcherVelocityCmd = 0;  // ticks/sec
+    private double      launcherVelocityCmd = 0;
+    private PrintWriter launcherLog         = null;
+    private ElapsedTime logTimer            = new ElapsedTime();
 
     // =====================================================================
     //  TIMING / STATE
@@ -127,10 +147,12 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
     // =====================================================================
     //  SEQUENCE STATE
     // =====================================================================
-    private int autoPhase        = 0;
-    private int autoSubStep      = 0;
-    private int shootSubStep     = 0;
-    private int currentStepIndex = 0;
+    private int     autoPhase        = 0;
+    private int     autoSubStep      = 0;
+    private int     shootSubStep     = 0;
+    private int     currentStepIndex = 0;
+    private boolean line2Picked      = false;
+    private boolean line3Picked      = false;
 
     // =====================================================================
     //  LIMELIGHT / POSE SEEDING
@@ -145,6 +167,7 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
     public void runOpMode() throws InterruptedException {
         telemetry.setMsTransmissionInterval(50);
 
+        initAllianceConstants();
         stepOptionIndex.add(STEP_OPTIONS.length - 1);  // start with DONE
 
         initializeHardware();
@@ -173,10 +196,10 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
             if (isStopRequested()) return;
 
             waitForStart();
-            turretMotor.setPower(1.0);  // enable turret only after match start
-            startingTimeMsec = System.currentTimeMillis();
-            initialRobotY    = robotY;
-            launcherVelocityCmd = 1;  // any positive value enables the launcher; updateLauncher() computes actual velocity from distance
+            turretMotor.setPower(1.0);
+            startingTimeMsec    = System.currentTimeMillis();
+            initialRobotY       = robotY;
+            launcherVelocityCmd = 1;
             limelight.stop();
 
             while (opModeIsActive()) {
@@ -185,10 +208,60 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
                 updateTurret();
                 if (autoPhase < 99) updateLauncher();
                 runAutonomousSequence();
+                updateLogging();
                 displayTelemetry();
             }
         } finally {
             stopRobot();
+        }
+    }
+
+    // =====================================================================
+    //  ALLIANCE CONSTANTS INIT — the only if/else in the whole file
+    // =====================================================================
+    private void initAllianceConstants() {
+        if (BLUE_ALLIANCE) {
+            shootTargetX        = PedroFieldConstants.BLUE_SHOOT_TARGET_X;
+            nearShootPose       = PedroFieldConstants.BLUE_NEAR_SHOOT_POSE;
+            farShootPose        = PedroFieldConstants.BLUE_FAR_SHOOT_POSE;
+            gateX               = PedroFieldConstants.BLUE_GATE_X;
+            gateY               = PedroFieldConstants.BLUE_GATE_Y;
+            gatePushX           = gateX - 2.0 + PedroRobotConstants.CHUTE_TO_FRONT_IN;
+            ballLineClearX      = PedroFieldConstants.FLOOR_BALLS_BLUE_X
+                                  + BALL_LINE_X_MARGIN_IN
+                                  + PedroRobotConstants.CHUTE_TO_FRONT_IN;
+            ballPickupCompleteX = PedroRobotConstants.CHUTE_TO_FRONT_IN + INTAKE_WALL_CLEARANCE_IN;
+            gateHeading         = 180.0;
+            pickupHeading       = 180.0;
+            startPoses          = new double[][] {
+                PedroFieldConstants.BLUE_AUDIENCE_START_POSE_1,
+                PedroFieldConstants.BLUE_AUDIENCE_START_POSE_2,
+                PedroFieldConstants.BLUE_AUDIENCE_START_POSE_3,
+                PedroFieldConstants.BLUE_BACK_WALL_START_POSE
+            };
+            allianceName = "BLUE";
+        } else {
+            shootTargetX        = PedroFieldConstants.RED_SHOOT_TARGET_X;
+            nearShootPose       = PedroFieldConstants.RED_NEAR_SHOOT_POSE;
+            farShootPose        = PedroFieldConstants.RED_FAR_SHOOT_POSE;
+            gateX               = PedroFieldConstants.RED_GATE_X;
+            gateY               = PedroFieldConstants.RED_GATE_Y;
+            gatePushX           = gateX + 2.0 - PedroRobotConstants.CHUTE_TO_FRONT_IN;
+            ballLineClearX      = PedroFieldConstants.FLOOR_BALLS_RED_X
+                                  - BALL_LINE_X_MARGIN_IN
+                                  - PedroRobotConstants.CHUTE_TO_FRONT_IN;
+            ballPickupCompleteX = PedroFieldConstants.FIELD_WIDTH_IN
+                                  - PedroRobotConstants.CHUTE_TO_FRONT_IN
+                                  - INTAKE_WALL_CLEARANCE_IN;
+            gateHeading         = 0.0;
+            pickupHeading       = 0.0;
+            startPoses          = new double[][] {
+                PedroFieldConstants.RED_AUDIENCE_START_POSE_1,
+                PedroFieldConstants.RED_AUDIENCE_START_POSE_2,
+                PedroFieldConstants.RED_AUDIENCE_START_POSE_3,
+                PedroFieldConstants.RED_BACK_WALL_START_POSE
+            };
+            allianceName = "RED";
         }
     }
 
@@ -233,7 +306,7 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
             upPrev = up; downPrev = down; rightPrev = right; leftPrev = left;
             startPrev = start;
 
-            telemetry.addLine("=== AUTO STEP CONFIGURATION  (BLUE alliance) ===");
+            telemetry.addLine("=== AUTO STEP CONFIGURATION  (" + allianceName + " alliance) ===");
             telemetry.addLine("UP/DOWN: select step | RIGHT/LEFT: change action");
             telemetry.addLine("Gamepad START: lock in sequence | DS START: begin match");
             telemetry.addLine();
@@ -245,13 +318,12 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
             telemetry.update();
         }
 
-        // Expand TWELVE_BALL preset into its fixed sub-sequence
         List<Integer> expanded = new ArrayList<>();
         for (int idx : stepOptionIndex) {
             if (STEP_OPTIONS[idx] == StepAction.TWELVE_BALL) {
-                expanded.add(StepAction.LINE_1.ordinal());
                 expanded.add(StepAction.LINE_2.ordinal());
                 expanded.add(StepAction.GATE.ordinal());
+                expanded.add(StepAction.LINE_1.ordinal());
                 expanded.add(StepAction.LINE_3.ordinal());
             } else {
                 expanded.add(idx);
@@ -268,17 +340,17 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
 
         switch (autoPhase) {
 
-            case 0:  // drive to initial shoot position (far start only; near start shoots in place)
-                if (initialRobotY >= 72.0) {  //if start on audience wall then skip the initial move and just aim the turret
-                    double[] shootXYH = blueShootPose();
-                    driveToPose(shootXYH[0], shootXYH[1], shootXYH[2], false);
+            case 0:
+                if (initialRobotY >= 72.0) {
+                    double[] pose = shootPose();
+                    driveToPose(pose[0], pose[1], pose[2], false);
                 }
                 shootSubStep   = 0;
                 isDelayRunning = false;
                 autoPhase      = 1;
                 break;
 
-            case 1:  // shoot pre-loaded balls
+            case 1:
                 if (executeShootSequence()) {
                     currentStepIndex = 0;
                     autoSubStep      = 0;
@@ -287,7 +359,7 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
                 }
                 break;
 
-            case 2:  // execute configured steps
+            case 2:
                 if (isStopRequested()) return;
                 if (currentStepIndex >= stepOptionIndex.size()) { autoPhase = 99; break; }
                 StepAction action = STEP_OPTIONS[stepOptionIndex.get(currentStepIndex)];
@@ -299,6 +371,8 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
                     stepDone = executeBallLineAndShootStep(action);
                 }
                 if (stepDone) {
+                    if (action == StepAction.LINE_2) line2Picked = true;
+                    if (action == StepAction.LINE_3) line3Picked = true;
                     currentStepIndex++;
                     autoSubStep    = 0;
                     isDelayRunning = false;
@@ -318,17 +392,39 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
     private boolean executeShootSequence() {
         switch (shootSubStep) {
             case 0:
-                // Single timer starts when robot stops. Fire as soon as RPM and turret
-                // are both on-target, or shoot anyway when the timer expires.
                 if ((rpmReadyToShoot() && turretAtTarget())
                         || nonBlockingDelay(PedroRobotConstants.MAX_RPM_TURRET_WAIT_SEC)) {
                     isDelayRunning = false;
-                    intake.setPower(INTAKE_POWER);
-                    transfer.setPower(1.0);
-                    shootSubStep = 1;
+                    shootSubStep = (robotY < 72.0) ? 1 : 3;
                 }
                 return false;
+
             case 1:
+                if (nonBlockingDelay(0.2)) {
+                    isDelayRunning = false;
+                    intake.setPower(0.5);
+                    transfer.setPower(0.3);
+                    shootSubStep = 2;
+                }
+                return false;
+
+            case 2:
+                if (nonBlockingDelay(2.0)) {
+                    isDelayRunning = false;
+                    shootSubStep = 10;
+                }
+                return false;
+
+            case 3:
+                if (nonBlockingDelay(0.1)) {
+                    isDelayRunning = false;
+                    transfer.setPower(1.0);
+                    intake.setPower(INTAKE_POWER);
+                    shootSubStep = 10;
+                }
+                return false;
+
+            case 10:
                 if (nonBlockingDelay(SHOOT_TRANSFER_SEC)) {
                     isDelayRunning = false;
                     intake.setPower(0);
@@ -337,6 +433,7 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
                     return true;
                 }
                 return false;
+
             default:
                 return true;
         }
@@ -346,27 +443,28 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
     //  GATE STEP
     // =====================================================================
     private boolean executeGateStep() {
-        double gateY = PedroFieldConstants.BLUE_GATE_Y - (PedroRobotConstants.CHUTE_TO_PUSHER_RIGHT_IN);
+        double gateYBias = 0.0;
+        if (line2Picked && !line3Picked) gateYBias = -3.0;
+        if (line3Picked && !line2Picked) gateYBias = +3.0;
+        double targetGateY = gateY - PedroRobotConstants.CHUTE_TO_PUSHER_RIGHT_IN + gateYBias;
+
         switch (autoSubStep) {
             case 0:
-                driveToPose(BALL_LINE_CLEAR_X, gateY, 180.0, false);
+                driveToPose(ballLineClearX, targetGateY, gateHeading, false);
                 autoSubStep = 1;
                 return false;
             case 1:
-                // Intake (heading 180°, facing -X) presses gate; pusher surface offset in Y via gateY
-                driveToPose(
-                        PedroFieldConstants.BLUE_GATE_X - 2.0 + PedroRobotConstants.CHUTE_TO_FRONT_IN,
-                        gateY, 180.0, false);
+                driveToPose(gatePushX, targetGateY, gateHeading, false);
                 autoSubStep = 2;
                 return false;
             case 2:
-                if (nonBlockingDelay(2.0)) {
+                if (nonBlockingDelay(0.5)) {
                     isDelayRunning = false;
                     autoSubStep = isLastActionableStep() ? 99 : 3;
                 }
                 return false;
             case 3:
-                driveToPose(BALL_LINE_CLEAR_X, gateY, 180.0, false);
+                driveToPose(ballLineClearX, targetGateY, gateHeading, false);
                 autoSubStep = 99;
                 return false;
             default:
@@ -378,31 +476,29 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
     //  BALL LINE + SHOOT STEP
     // =====================================================================
     private boolean executeBallLineAndShootStep(StepAction line) {
-        double lineY         = getBallLineY(line);
-        double exitX         = BALL_PICKUP_COMPLETE_X;
-        double pickupHeading = 180.0;
+        double lineY = getBallLineY(line);
 
         switch (autoSubStep) {
             case 0:
-                driveToPose(BALL_LINE_CLEAR_X, lineY, pickupHeading, false);
+                driveToPose(ballLineClearX, lineY, pickupHeading, false);
                 autoSubStep = 1;
                 return false;
 
             case 1:
                 intake.setPower(INTAKE_POWER);
-                driveToPoseSlow(exitX, lineY, pickupHeading, false);
+                driveToPoseSlow(ballPickupCompleteX, lineY, pickupHeading, false);
                 intake.setPower(0);
                 autoSubStep = 2;
                 return false;
 
             case 2:
-                driveToPose(BALL_LINE_CLEAR_X, lineY, pickupHeading, false);
+                driveToPose(ballLineClearX, lineY, pickupHeading, false);
                 autoSubStep = 3;
                 return false;
 
             case 3:
-                double[] shoot = blueShootPose();
-                driveToPose(shoot[0], shoot[1], shoot[2], false);
+                double[] pose = shootPose();
+                driveToPose(pose[0], pose[1], pose[2], false);
                 shootSubStep   = 0;
                 isDelayRunning = false;
                 autoSubStep    = 4;
@@ -421,50 +517,27 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
     }
 
     // =====================================================================
-    //  NAVIGATION — NORMAL SPEED
+    //  NAVIGATION
     // =====================================================================
     private void driveToPose(double toX, double toY, double headingDeg, boolean holdEnd) {
         followPathBlocking(buildPath(toX, toY, headingDeg), holdEnd, 1.0);
     }
 
-    // =====================================================================
-    //  NAVIGATION — SLOW SPEED  (for ball line intake pass)
-    // =====================================================================
     private void driveToPoseSlow(double toX, double toY, double headingDeg, boolean holdEnd) {
         followPathBlocking(buildPath(toX, toY, headingDeg), holdEnd, BALL_LINE_MAX_POWER);
     }
 
-    // =====================================================================
-    //  PATH BUILDER
-    // =====================================================================
     private Object buildPath(double toX, double toY, double headingDeg) {
         Pose   currentPose = follower.getPose();
-        double fromX       = currentPose.getX();
-        double fromY       = currentPose.getY();
         double fromH       = currentPose.getHeading();
         double toH         = Math.toRadians(headingDeg);
-
-        Pose start = new Pose(fromX, fromY, fromH);
-        Pose end   = new Pose(toX,   toY,   toH);
-        Pose via   = null;
-
-        if (via != null) {
-            PathChain chain = follower.pathBuilder()
-                    .addPath(new Path(new BezierLine(start, via)))
-                    .addPath(new Path(new BezierLine(via, end)))
-                    .setGlobalLinearHeadingInterpolation(fromH, toH, 0.6)  //0.6 means end the heading portion by 60% of the distance
-                    .build();
-            return chain;
-        } else {
-            Path path = new Path(new BezierLine(start, end));
-            path.setLinearHeadingInterpolation(fromH, toH, .6);     //0.6 means end the heading portion by 60% of the distance
-            return path;
-        }
+        Pose   start       = new Pose(currentPose.getX(), currentPose.getY(), fromH);
+        Pose   end         = new Pose(toX, toY, toH);
+        Path   path        = new Path(new BezierLine(start, end));
+        path.setLinearHeadingInterpolation(fromH, toH, 0.6);
+        return path;
     }
 
-    // =====================================================================
-    //  BLOCKING FOLLOW — handles both Path and PathChain, with maxPower
-    // =====================================================================
     private void followPathBlocking(Object pathOrChain, boolean holdEnd, double maxPower) {
         if (pathOrChain instanceof PathChain) {
             follower.followPath((PathChain) pathOrChain, maxPower, holdEnd);
@@ -485,27 +558,16 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
         if (maxPower < 1.0) follower.setMaxPower(1.0);
     }
 
-
     // =====================================================================
     //  TURRET CONTROL
-    //  Computes the angle from the chute (robot position) toward the fixed
-    //  shooting target, expressed in the robot frame (0 = front), and
-    //  commands the turret motor (RUN_TO_POSITION) accordingly.
-    //  Encoder 0 = forward (reset at match start).
     // =====================================================================
     private void updateTurret() {
-        double dx = PedroFieldConstants.BLUE_SHOOT_TARGET_X - robotX;
-        double dy = PedroFieldConstants.SHOOT_TARGET_Y - robotY;
-        // Bearing to target in field frame (Pedro: 0 = right/+X, angles CCW-positive)
+        double dx              = shootTargetX - robotX;
+        double dy              = PedroFieldConstants.SHOOT_TARGET_Y - robotY;
         double fieldBearingRad = Math.atan2(dy, dx);
-        // Convert robot heading (degrees) to radians
-        double headingRad = Math.toRadians(robotHeading);
-        // Angle in robot frame: 0 = toward robot front
-        double turretRad = fieldBearingRad - headingRad;
-        // Normalize to [-PI, PI]
+        double turretRad       = fieldBearingRad - Math.toRadians(robotHeading);
         turretRad      = Math.atan2(Math.sin(turretRad), Math.cos(turretRad));
         turretAngleDeg = Math.toDegrees(turretRad);
-        // Convert to encoder ticks, clamp to physical limits, and command motor
         int targetTicks = (int) Math.min(Math.max(
                 turretAngleDeg * PedroRobotConstants.TURRET_TICKS_PER_DEG, -1400), 1400);
         turretMotor.setTargetPosition(targetTicks);
@@ -530,29 +592,19 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
         }
     }
 
-    /** Returns {x, y, headingDeg} for the BLUE shoot position based on starting side. */
-    private double[] blueShootPose() {
-        if (initialRobotY < 72.0) {
-            return PedroFieldConstants.BLUE_NEAR_SHOOT_POSE;
-        } else {
-            return PedroFieldConstants.BLUE_FAR_SHOOT_POSE;
-        }
+    private double[] shootPose() {
+        return (initialRobotY < 72.0) ? nearShootPose : farShootPose;
     }
 
     private void readPoseFromFollower() {
-        Pose p   = follower.getPose();
-        robotX   = p.getX();
-        robotY   = p.getY();
+        Pose p       = follower.getPose();
+        robotX       = p.getX();
+        robotY       = p.getY();
         robotHeading = Math.toDegrees(p.getHeading());
     }
 
     // =====================================================================
-    //  LIMELIGHT POSE SEEDING — snap to closest predefined start pose
-    //
-    //  1. Collect averaged X/Y samples from the camera (no std-dev gate).
-    //  2. Convert to Pedro inches.
-    //  3. Find the predefined start pose with the smallest XY distance.
-    //  4. Seed Pedro with that pose.
+    //  LIMELIGHT POSE SEEDING
     // =====================================================================
     private void seedPoseFromLimelight() {
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
@@ -565,10 +617,6 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
         telemetry.update();
 
         pollLimelight();
-        //pedroHasValidPose=true;
-        //pedroX=PedroFieldConstants.BLUE_AUDIENCE_START_POSE_1[0];
-        //pedroY=PedroFieldConstants.BLUE_AUDIENCE_START_POSE_1[1];
-        //pedroHeading=PedroFieldConstants.BLUE_AUDIENCE_START_POSE_1[2];
         if (pedroHasValidPose) {
             follower.setPose(new Pose(pedroX, pedroY, Math.toRadians(pedroHeading)));
             readPoseFromFollower();
@@ -581,10 +629,6 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
         sleep(500);
     }
 
-    /**
-     * Collects camera samples, averages X/Y, converts to Pedro inches,
-     * then selects the closest predefined start pose to seed pinpoint.
-     */
     private void pollLimelight() {
         final int TARGET_SAMPLES = 20;
         final int MAX_FAIL_COUNT = 10;
@@ -617,9 +661,9 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
                 }
             } else {
                 failCount++;
-                String reason = result == null             ? "null result"
+                String reason = result == null            ? "null result"
                         : !result.isValid()               ? "isValid=false"
-                        : result.getBotpose() == null      ? "botpose=null"
+                        : result.getBotpose() == null     ? "botpose=null"
                         : "tagCount=" + result.getBotposeTagCount();
                 telemetry.addData("Poll fail", "(%d) %s", failCount, reason);
                 telemetry.update();
@@ -631,53 +675,39 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
 
         telemetry.addData("Poll done", "samples=%d  fails=%d", xSamples.size(), failCount);
         telemetry.update();
-        sleep(500);  // hold so result is readable
+        sleep(500);
 
         if (xSamples.isEmpty()) {
             telemetry.addData("Limelight", "No samples — pose not set");
             telemetry.update();
-            sleep(500);  // hold so failure reason is readable
+            sleep(500);
             return;
         }
 
-        // Drop outliers: remove any sample whose X or Y deviates more than
-        // OUTLIER_THRESHOLD from the median before averaging.
-        final double OUTLIER_THRESHOLD = 0.07; // meters (~6 in); tune if needed
+        final double OUTLIER_THRESHOLD = 0.07;
         xSamples = filterOutliers(xSamples, OUTLIER_THRESHOLD);
         ySamples = filterOutliers(ySamples, OUTLIER_THRESHOLD);
         if (xSamples.isEmpty()) return;
 
-        // Average filtered samples
         double avgX = 0, avgY = 0;
         for (double v : xSamples) avgX += v;
         for (double v : ySamples) avgY += v;
         avgX /= xSamples.size();
         avgY /= ySamples.size();
 
-        // Convert limelight WCS (meters) to Pedro inches
-        //   Pedro X = limelight_Y * 39.37 + 72
-        //   Pedro Y = -limelight_X * 39.37 + 72
-        double camPedroX = avgY * 39.37 + 72.0;
+        // Limelight WCS (meters, field-center origin) → Pedro inches (audience-left corner)
+        double camPedroX = avgY * 39.37 + 72.0 + 4.0;  // +4 in empirical correction
         double camPedroY = -avgX * 39.37 + 72.0;
 
-        // Find closest predefined start pose
-        double[][] poses = {
-            PedroFieldConstants.BLUE_AUDIENCE_START_POSE_1,
-            PedroFieldConstants.BLUE_AUDIENCE_START_POSE_2,
-            PedroFieldConstants.BLUE_AUDIENCE_START_POSE_3,
-            PedroFieldConstants.BLUE_BACK_WALL_START_POSE
-        };
-
-        double minDist   = Double.MAX_VALUE;
+        double   minDist  = Double.MAX_VALUE;
         double[] bestPose = null;
-        for (double[] pose : poses) {
+        for (double[] pose : startPoses) {
             double dist = Math.hypot(camPedroX - pose[0], camPedroY - pose[1]);
             if (dist < minDist) {
-                minDist   = dist;
-                bestPose  = pose;
+                minDist  = dist;
+                bestPose = pose;
             }
         }
-//        bestPose=PedroFieldConstants.BLUE_AUDIENCE_START_POSE_1;
 
         if (bestPose != null) {
             pedroX            = bestPose[0];
@@ -693,18 +723,11 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
         }
     }
 
-    /**
-     * Returns a copy of {@code samples} with any value that deviates more than
-     * {@code threshold} from the median removed.  If all values would be removed
-     * the original list is returned unchanged so the caller always has data.
-     */
     private List<Double> filterOutliers(List<Double> samples, double threshold) {
-        if (samples.size() < 3) return samples;   // not enough data to judge
-
+        if (samples.size() < 3) return samples;
         List<Double> sorted = new ArrayList<>(samples);
         java.util.Collections.sort(sorted);
         double median = sorted.get(sorted.size() / 2);
-
         List<Double> filtered = new ArrayList<>();
         for (double v : samples) {
             if (Math.abs(v - median) <= threshold) filtered.add(v);
@@ -716,36 +739,44 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
     //  HARDWARE INIT
     // =====================================================================
     private void initializeHardware() {
-        intake        = hardwareMap.get(DcMotorEx.class,  PedroRobotConstants.INTAKE_CONFIG_NAME);
-        transfer      = hardwareMap.get(CRServo.class,    PedroRobotConstants.TRANSFER_SERVO_CONFIG_NAME);
-        rightLauncher = hardwareMap.get(DcMotorEx.class,  PedroRobotConstants.RIGHT_LAUNCHER_CONFIG_NAME);
-        leftLauncher  = hardwareMap.get(DcMotorEx.class,  PedroRobotConstants.LEFT_LAUNCHER_CONFIG_NAME);
-        turretMotor   = hardwareMap.get(DcMotorEx.class,  PedroRobotConstants.TURRET_MOTOR_CONFIG_NAME);
+        intake        = hardwareMap.get(DcMotorEx.class, PedroRobotConstants.INTAKE_CONFIG_NAME);
+        transfer      = hardwareMap.get(CRServo.class,   PedroRobotConstants.TRANSFER_SERVO_CONFIG_NAME);
+        rightLauncher = hardwareMap.get(DcMotorEx.class, PedroRobotConstants.RIGHT_LAUNCHER_CONFIG_NAME);
+        leftLauncher  = hardwareMap.get(DcMotorEx.class, PedroRobotConstants.LEFT_LAUNCHER_CONFIG_NAME);
+        turretMotor   = hardwareMap.get(DcMotorEx.class, PedroRobotConstants.TURRET_MOTOR_CONFIG_NAME);
 
-
-        intake.setDirection(DcMotorEx.Direction.FORWARD);
-        rightLauncher.setDirection(DcMotorEx.Direction.FORWARD);
-        leftLauncher.setDirection(DcMotorEx.Direction.REVERSE);
+        transfer.setDirection(CRServo.Direction.REVERSE);
+        intake.setDirection(DcMotorEx.Direction.REVERSE);
+        rightLauncher.setDirection(DcMotorEx.Direction.REVERSE);
+        leftLauncher.setDirection(DcMotorEx.Direction.FORWARD);
 
         intake.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
         rightLauncher.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
         leftLauncher.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
-        rightLauncher.setVelocityPIDFCoefficients(150, 0, 0, 14);
-        leftLauncher.setVelocityPIDFCoefficients(150, 0, 0, 14);
+        rightLauncher.setVelocityPIDFCoefficients(200, 0, 0, 13);
+        leftLauncher.setVelocityPIDFCoefficients(200, 0, 0, 13);
 
         intake.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
         rightLauncher.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
         leftLauncher.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
 
-        // Turret motor — reset encoder (robot pre-positioned facing forward at match start)
         turretMotor.setPositionPIDFCoefficients(PedroRobotConstants.TURRET_PIDF);
         turretMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         turretMotor.setTargetPosition(0);
         turretMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        turretMotor.setTargetPositionTolerance((int) PedroRobotConstants.TURRET_TICKS_PER_DEG); // ±1 deg
-        // NOTE: setPower(1.0) intentionally deferred until after waitForStart()
+        turretMotor.setTargetPositionTolerance((int) PedroRobotConstants.TURRET_TICKS_PER_DEG);
 
-        follower = SealsConstants.createFollower(hardwareMap);
+        follower = PossumsConstants.createFollower(hardwareMap);
+
+        if (LAUNCHER_LOGGING_ENABLED) {
+            try {
+                launcherLog = new PrintWriter("/sdcard/FIRST/launcher_log.csv");
+                launcherLog.println("time_sec,cmd,right,left,transfer_pwr,intake_pwr,intake_vel");
+                logTimer.reset();
+            } catch (Exception e) {
+                launcherLog = null;
+            }
+        }
     }
 
     // =====================================================================
@@ -758,11 +789,38 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
             return;
         }
         double distToGoal = Math.hypot(
-                robotX - PedroFieldConstants.BLUE_SHOOT_TARGET_X,
-                robotY - PedroFieldConstants.SHOOT_TARGET_Y);  // inches
-        launcherVelocityCmd = 1160 + distToGoal * 3.5;  // ticks/sec, same formula as TeleOp
+                robotX - shootTargetX,
+                robotY - PedroFieldConstants.SHOOT_TARGET_Y);
+        launcherVelocityCmd = 1160 + distToGoal * 3.75;
         rightLauncher.setVelocity(launcherVelocityCmd);
         leftLauncher.setVelocity(launcherVelocityCmd);
+    }
+
+    // =====================================================================
+    //  LOGGING — called every loop iteration regardless of auto phase
+    // =====================================================================
+    private void updateLogging() {
+        if (!LAUNCHER_LOGGING_ENABLED) return;
+
+        double right       = rightLauncher.getVelocity();
+        double left        = leftLauncher.getVelocity();
+        double transferPwr = transfer.getPower();
+        double intakePwr   = intake.getPower();
+        double intakeVel   = intake.getVelocity();
+
+        TelemetryPacket packet = new TelemetryPacket();
+        packet.put("cmd (ticks/s)",   launcherVelocityCmd);
+        packet.put("right (ticks/s)", right);
+        packet.put("left (ticks/s)",  left);
+        packet.put("transfer pwr",    transferPwr);
+        packet.put("intake pwr",      intakePwr);
+        packet.put("intake vel",      intakeVel);
+        FtcDashboard.getInstance().sendTelemetryPacket(packet);
+
+        if (launcherLog != null)
+            launcherLog.printf("%.3f,%.0f,%.0f,%.0f,%.2f,%.2f,%.0f%n",
+                    logTimer.seconds(), launcherVelocityCmd, right, left,
+                    transferPwr, intakePwr, intakeVel);
     }
 
     private void stopRobot() {
@@ -777,8 +835,10 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
         QuickOdometryStorage.y             = robotY;
         QuickOdometryStorage.heading       = robotHeading;
         QuickOdometryStorage.turretDegrees = turretAngleDeg;
-        QuickOdometryStorage.alliance      = "BLUE";
+        QuickOdometryStorage.alliance      = allianceName;
         QuickOdometryStorage.valid         = true;
+
+        if (launcherLog != null) { launcherLog.flush(); launcherLog.close(); }
     }
 
     private boolean nonBlockingDelay(double sec) {
@@ -789,9 +849,8 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
     }
 
     private boolean rpmReadyToShoot() {
-        // 933 ticks/sec ≈ 2000 RPM; 47 ticks/sec ≈ 100 RPM tolerance
-        return launcherVelocityCmd > 933
-                && Math.abs(launcherVelocityCmd - rightLauncher.getVelocity()) <= 47;
+        return (launcherVelocityCmd > 933
+                && Math.abs(launcherVelocityCmd - rightLauncher.getVelocity()) <= 94);
     }
 
     private boolean turretAtTarget() {
@@ -800,7 +859,6 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
     }
 
     private boolean rpmAccurate() {
-        // 9 ticks/sec ≈ 20 RPM tolerance; 933 ticks/sec ≈ 2000 RPM minimum
         double err = Math.abs(launcherVelocityCmd - rightLauncher.getVelocity());
         if (err < 9 && launcherVelocityCmd > 933) {
             if (rpmSettleTimerWasReset) { rpmSettleTimer.reset(); rpmSettleTimerWasReset = false; }
@@ -816,6 +874,7 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
     private void displayTelemetry() {
         long elapsed = (System.currentTimeMillis() - startingTimeMsec) / 1000;
         telemetry.addData("Elapsed Sec", elapsed);
+        telemetry.addData("Alliance", allianceName);
         telemetry.addData("Phase / SubStep / ShootSub",
                 "%d / %d / %d", autoPhase, autoSubStep, shootSubStep);
         telemetry.addData("Config Step", currentStepIndex + 1);
@@ -823,7 +882,8 @@ public class Seals_Match7_Blue_pedro_auto extends LinearOpMode {
                 robotX, robotY, robotHeading);
         telemetry.addData("Turret Angle", "%.1f deg", turretAngleDeg);
         telemetry.addData("Pedro Busy", follower.isBusy());
-        telemetry.addData("Launcher Tic/second cmd/act", "%.0f / %.0f", launcherVelocityCmd, rightLauncher.getVelocity());
+        telemetry.addData("Launcher Tic/second cmd/act",
+                "%.0f / %.0f", launcherVelocityCmd, rightLauncher.getVelocity());
         telemetry.addData("RPM Accurate", rpmAccurate());
         for (int i = 0; i < stepOptionIndex.size(); i++) {
             String marker = (i == currentStepIndex && autoPhase == 2) ? ">" : " ";

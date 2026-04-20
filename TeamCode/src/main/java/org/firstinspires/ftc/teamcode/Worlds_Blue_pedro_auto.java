@@ -44,8 +44,8 @@ import java.util.List;
  *   START             — lock in sequence and proceed to limelight seeding
  */
 //@TeleOp(name = "Match7_Pedro_Auto", group = "Match")
-@Autonomous(name = "Possums Match7_Blue_Pedro_Auto", preselectTeleOp = "MainTeleOpBlueAutoPinpoint", group = "Match")
-public class Possums_Match7_Blue_pedro_auto extends LinearOpMode {
+@Autonomous(name = "Worlds_Blue_Pedro_Auto", preselectTeleOp = "MainTeleOpBlueLLReset", group = "Match")
+public class Worlds_Blue_pedro_auto extends LinearOpMode {
 
     private static final double BALL_LINE_X_MARGIN_IN = 9.0;
 

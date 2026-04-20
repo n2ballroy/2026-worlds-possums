@@ -318,7 +318,7 @@ public class Possums_Match7_Blue_pedro_auto extends LinearOpMode {
                 // Single timer starts when robot stops. Fire as soon as RPM and turret
                 // are both on-target, or shoot anyway when the timer expires.
                 if ((rpmReadyToShoot() && turretAtTarget())
-                        || nonBlockingDelay(PedroRobotsConstants.MAX_RPM_TURRET_WAIT_SEC)) {
+                        || nonBlockingDelay(PedroRobotConstants.MAX_RPM_TURRET_WAIT_SEC)) {
                     isDelayRunning = false;
 
                     if(robotY<72.0) {

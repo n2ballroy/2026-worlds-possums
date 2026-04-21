@@ -8,6 +8,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
@@ -102,19 +103,20 @@ public class Worlds_2Color_Blue_TeleOp extends LinearOpMode {
         prism            = hardwareMap.get(Servo.class,                "prism");
         pinpointOdometry = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
         limelight        = hardwareMap.get(Limelight3A.class,          "limelight");
+//
 
-        frontLeft  = hardwareMap.get(DcMotor.class, "right_rear_drive");
-        backLeft   = hardwareMap.get(DcMotor.class, "right_front_drive");
-        backRight  = hardwareMap.get(DcMotor.class, "left_front_drive");
-        frontright = hardwareMap.get(DcMotor.class, "left_rear_drive");
+        frontLeft  = hardwareMap.get(DcMotor.class, "lf");
+        backLeft   = hardwareMap.get(DcMotor.class, "rf");
+        backRight  = hardwareMap.get(DcMotor.class, "rb");
+        frontright = hardwareMap.get(DcMotor.class, "LB");
 
-        pinpointOdometry.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD, GoBildaPinpointDriver.EncoderDirection.FORWARD);
+        pinpointOdometry.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.REVERSED, GoBildaPinpointDriver.EncoderDirection.REVERSED);
         pinpointOdometry.resetPosAndIMU();
         pinpointOdometry.recalibrateIMU();
         pinpointOdometry.setOffsets(-5.46, -2.7, DistanceUnit.INCH);
 
-        Rightshooter.setVelocityPIDFCoefficients(150, 0, 0, 14);
-        Leftshooter.setVelocityPIDFCoefficients(150, 0, 0, 14);
+        Rightshooter.setVelocityPIDFCoefficients(230, 0, 0, 14);
+        Leftshooter.setVelocityPIDFCoefficients(230, 0, 0, 14);
         transfer.setDirection(CRServo.Direction.REVERSE);
         Leftshooter.setDirection(DcMotor.Direction.FORWARD);
         Rightshooter.setDirection(DcMotor.Direction.REVERSE);
@@ -132,10 +134,10 @@ public class Worlds_2Color_Blue_TeleOp extends LinearOpMode {
         turret.setPositionPIDFCoefficients(12.5);
         transfer.setDirection(CRServo.Direction.REVERSE);
         turret.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        frontLeft.setDirection(DcMotor.Direction.FORWARD);
-        backLeft.setDirection(DcMotor.Direction.FORWARD);
-        backRight.setDirection(DcMotor.Direction.REVERSE);
-        frontright.setDirection(DcMotor.Direction.REVERSE);
+        frontLeft.setDirection(DcMotor.Direction.REVERSE);
+        backLeft.setDirection(DcMotor.Direction.REVERSE);
+        backRight.setDirection(DcMotor.Direction.FORWARD);
+        frontright.setDirection(DcMotor.Direction.FORWARD);
         telemetry.setMsTransmissionInterval(11);
         turret.setVelocity(1800);
         turret.setTargetPosition(0);
@@ -145,7 +147,9 @@ public class Worlds_2Color_Blue_TeleOp extends LinearOpMode {
 
         limelight.pipelineSwitch(PedroRobotConstants.GOALS_PIPELINE);
         limelight.start();
-
+        telemetry.addData("quick valid",QuickOdometryStorage.valid);
+        telemetry.update();
+        sleep(5000);
         if (QuickOdometryStorage.valid) {
             QuickOdometryStorage.valid = false;
             pinpointOdometry.setPosX(QuickOdometryStorage.x, DistanceUnit.INCH);
@@ -167,9 +171,9 @@ public class Worlds_2Color_Blue_TeleOp extends LinearOpMode {
         while (opModeIsActive()) {
             prismTimer();
             turret.setVelocity(1800);
-            Y  = gamepad1.left_stick_y;
-            X  = gamepad1.left_stick_x;
-            RX = gamepad1.right_stick_x;
+            Y  = gamepad1.left_stick_x;
+            X  = gamepad1.left_stick_y;
+            RX = -gamepad1.right_stick_x;
 
             X_Pinpoint   = pinpointOdometry.getPosX(DistanceUnit.INCH);
             Y_Pinpoint   = pinpointOdometry.getPosY(DistanceUnit.INCH);
@@ -197,10 +201,10 @@ public class Worlds_2Color_Blue_TeleOp extends LinearOpMode {
 
             if (gamepad1.right_bumper) {
                 if (Y_Pinpoint < 50.0) {
-                    intake.setPower(0.5);
+                    intake.setPower(-0.5);
                     transfer.setPower(0.3);
                 } else {
-                    intake.setPower(0.8);
+                    intake.setPower(-0.8);
                     transfer.setPower(1.0);
                 }
             } else {
@@ -267,7 +271,7 @@ public class Worlds_2Color_Blue_TeleOp extends LinearOpMode {
                 double llX = botpose.getPosition().x;
                 double llY = botpose.getPosition().y;
 
-                double pinX   = llY * 39.37 + 72.0;
+                double pinX   = llY * 39.37 + 72.0+8.0;
                 double pinY   = -llX * 39.37 + 72.0;
                 double llYaw  = botpose.getOrientation().getYaw(AngleUnit.DEGREES);
                 double heading = llYaw - 90.0;

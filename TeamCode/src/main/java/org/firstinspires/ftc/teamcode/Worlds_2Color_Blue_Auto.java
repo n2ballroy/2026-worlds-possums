@@ -15,6 +15,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import java.io.PrintWriter;
@@ -117,7 +118,7 @@ public class Worlds_2Color_Blue_Auto extends LinearOpMode {
     private Follower    follower;
 
     // =====================================================================
-    //  POSE
+    //  POS
     // =====================================================================
     private double robotX, robotY, robotHeading;
     private double initialRobotY = 0;
@@ -403,7 +404,7 @@ public class Worlds_2Color_Blue_Auto extends LinearOpMode {
                 if (nonBlockingDelay(0.2)) {
                     isDelayRunning = false;
                     intake.setPower(0.5);
-                    transfer.setPower(0.3);
+                    transfer.setPower(0.25);
                     shootSubStep = 2;
                 }
                 return false;
@@ -753,8 +754,8 @@ public class Worlds_2Color_Blue_Auto extends LinearOpMode {
         intake.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
         rightLauncher.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
         leftLauncher.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
-        rightLauncher.setVelocityPIDFCoefficients(200, 0, 0, 13);
-        leftLauncher.setVelocityPIDFCoefficients(200, 0, 0, 13);
+        rightLauncher.setVelocityPIDFCoefficients(230, 0, 0, 13);
+        leftLauncher.setVelocityPIDFCoefficients(230, 0, 0, 13);
 
         intake.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
         rightLauncher.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);

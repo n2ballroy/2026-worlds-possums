@@ -61,10 +61,14 @@ public class RPM_Shots_2Color_Blue_TeleOp extends LinearOpMode {
 
     // Shooting constants
     private static final double INTAKE_POWER               = 1.0;
-    private static final double TRANSFER_POWER             = 1.0;
+    private static final double TRANSFER_POWER             = 0.8;
     private static final double SHOOTER_READY_MAX_WAIT_SEC = 2.0;
     private static final double SHOT_DETECT_TIMEOUT_SEC    = 1.5;
     private static final double SHOT_RPM_DROP_FRACTION     = 0.80;
+
+    public DcMotorEx getIntake() {
+        return intake;
+    }
 
     // PWM Constants
     private static final double NORMAL_RAINBOW = 0.1988;
@@ -126,8 +130,8 @@ public class RPM_Shots_2Color_Blue_TeleOp extends LinearOpMode {
         pinpointOdometry.recalibrateIMU();
         pinpointOdometry.setOffsets(-5.46, -2.7, DistanceUnit.INCH);
 
-        Rightshooter.setVelocityPIDFCoefficients(230, 0, 0, 14);
-        Leftshooter.setVelocityPIDFCoefficients(230, 0, 0, 14);
+        Rightshooter.setVelocityPIDFCoefficients(230, 0, 0, 13);
+        Leftshooter.setVelocityPIDFCoefficients(230, 0, 0, 13);
         transfer.setDirection(CRServo.Direction.REVERSE);
         Leftshooter.setDirection(DcMotor.Direction.FORWARD);
         Rightshooter.setDirection(DcMotor.Direction.REVERSE);
@@ -191,11 +195,11 @@ public class RPM_Shots_2Color_Blue_TeleOp extends LinearOpMode {
             Yaw_Pinpoint = pinpointOdometry.getHeading(AngleUnit.DEGREES);
             Delta__X_    = Goal_X - X_Pinpoint;
             Delta__Y_    = Goal_Y - Y_Pinpoint;
-            Target_Heading = Math.atan2(Delta__Y_, Delta__X_) / Math.PI * 180;
+            Target_Heading = Math.toDegrees(Math.atan2(Delta__Y_, Delta__X_));
             Distance       = Math.sqrt(Math.pow(Delta__X_, 2) + Math.pow(Delta__Y_, 2));
-            Shooter_Speed  = (int) (1160 + Distance * 3.75);
+            Shooter_Speed  = (int) (1160.0 + Distance * 3.75);
 
-            if ((gamepad1.dpad_left || gamepad1.dpad_right) && dpadTimer.milliseconds() > 150) {
+            if ((gamepad1.dpad_left || gamepad1.dpad_right) && dpadTimer.milliseconds() > 150) {  //about 6 deg/sec when held down
                 if (gamepad1.dpad_left) Offset++;
                 else                   Offset--;
                 dpadTimer.reset();
@@ -205,6 +209,7 @@ public class RPM_Shots_2Color_Blue_TeleOp extends LinearOpMode {
             if (gamepad1.start && !prevStart) {
                 reseedFromLimelight();
             }
+            prevStart = gamepad1.start;
 
             double rawError    = Math.toRadians(Target_Heading - Yaw_Pinpoint + Offset);
             double headingError = Math.toDegrees(Math.atan2(Math.sin(rawError), Math.cos(rawError)));
@@ -225,8 +230,15 @@ public class RPM_Shots_2Color_Blue_TeleOp extends LinearOpMode {
             }
 
             if (gamepad1.a && !prevA) {
-                Aim = (Aim == 0) ? 1 : 0;
+                if(Aim == 0){
+                    Aim = 1;
+                }
+                else{
+                    Aim = 0;
+                }
             }
+            prevA     = gamepad1.a;
+
             if (Aim == 0) {
                 turret.setTargetPosition(0);
             } else {
@@ -260,8 +272,6 @@ public class RPM_Shots_2Color_Blue_TeleOp extends LinearOpMode {
             telemetry.addData("Left velo", Leftshooter.getVelocity());
             telemetry.update();
 
-            prevA     = gamepad1.a;
-            prevStart = gamepad1.start;
             pinpointOdometry.update();
         }
     }
@@ -343,6 +353,7 @@ public class RPM_Shots_2Color_Blue_TeleOp extends LinearOpMode {
     private boolean turretAtTarget() {
         double toleranceTicks = PedroRobotConstants.TURRET_ACCURACY_DEG
                                 * PedroRobotConstants.TURRET_TICKS_PER_DEG;
+
         return Math.abs(turret.getCurrentPosition() - Target_Ticks) <= toleranceTicks;
     }
 

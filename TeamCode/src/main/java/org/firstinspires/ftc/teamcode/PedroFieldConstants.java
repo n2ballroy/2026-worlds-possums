@@ -101,4 +101,19 @@ public class PedroFieldConstants {
     public static final int BALL_LINE_1_TAG_NUM = 21;
     public static final int BALL_LINE_2_TAG_NUM = 22;
     public static final int BALL_LINE_3_TAG_NUM = 23;
+
+    // -------------------------------------------------------------------------
+    // End-of-match parking positions — heading is preserved from match start.
+    // "Near" = robot was at Y >= 60 (close to back wall / goal side).
+    // "Far"  = robot was at Y <  60 (close to audience wall).
+    // TODO: set these coordinates before competition
+    // -------------------------------------------------------------------------
+    public static final double BLUE_END_NEAR_X = 37.0;
+    public static final double BLUE_END_NEAR_Y = 8.0;
+    public static final double BLUE_END_FAR_X  = 37.0;
+    public static final double BLUE_END_FAR_Y  = 120.0;
+    public static final double RED_END_NEAR_X  = 144.0-BLUE_END_NEAR_X;
+    public static final double RED_END_NEAR_Y  = BLUE_END_NEAR_Y;
+    public static final double RED_END_FAR_X   = 144.0-BLUE_END_FAR_X;
+    public static final double RED_END_FAR_Y   = BLUE_END_FAR_Y;
 }

@@ -129,8 +129,10 @@ public class RPM_Shots_2Color_Blue_Auto extends LinearOpMode {
     // =====================================================================
     //  POS
     // =====================================================================
-    private double robotX, robotY, robotHeading;
-    private double initialRobotY = 0;
+    private double  robotX, robotY, robotHeading;
+    private double  initialRobotY       = 0;
+    private double  initialRobotHeading = 0;
+    private double  endNearX, endNearY, endFarX, endFarY;
 
     // =====================================================================
     //  TURRET
@@ -211,10 +213,25 @@ public class RPM_Shots_2Color_Blue_Auto extends LinearOpMode {
             turretMotor.setPower(1.0);
             startingTimeMsec    = System.currentTimeMillis();
             initialRobotY       = robotY;
+            initialRobotHeading = robotHeading;
             launcherVelocityCmd = 1;
             limelight.stop();
 
             while (opModeIsActive()) {
+                double elapsedSec = (System.currentTimeMillis() - startingTimeMsec) / 1000.0;
+
+                if (elapsedSec >= 29.5) break;  //this will run stopRobot()
+
+                if (elapsedSec >= 28.0 && autoPhase < 98) {
+                    follower.breakFollowing();
+                    intake.setPower(0);
+                    transfer.setPower(0);
+                    launcherVelocityCmd = 0;
+                    autoPhase       = 98;
+                    autoSubStep     = 0;
+                    isDelayRunning  = false;
+                }
+
                 follower.update();
                 readPoseFromFollower();
                 updateTurret();
@@ -252,6 +269,10 @@ public class RPM_Shots_2Color_Blue_Auto extends LinearOpMode {
                 PedroFieldConstants.BLUE_AUDIENCE_START_POSE_3,
                 PedroFieldConstants.BLUE_BACK_WALL_START_POSE
             };
+            endNearX     = PedroFieldConstants.BLUE_END_NEAR_X;
+            endNearY     = PedroFieldConstants.BLUE_END_NEAR_Y;
+            endFarX      = PedroFieldConstants.BLUE_END_FAR_X;
+            endFarY      = PedroFieldConstants.BLUE_END_FAR_Y;
             allianceName = "BLUE";
         } else {
             shootTargetX        = PedroFieldConstants.RED_SHOOT_TARGET_X;
@@ -274,6 +295,10 @@ public class RPM_Shots_2Color_Blue_Auto extends LinearOpMode {
                 PedroFieldConstants.RED_AUDIENCE_START_POSE_3,
                 PedroFieldConstants.RED_BACK_WALL_START_POSE
             };
+            endNearX     = PedroFieldConstants.RED_END_NEAR_X;
+            endNearY     = PedroFieldConstants.RED_END_NEAR_Y;
+            endFarX      = PedroFieldConstants.RED_END_FAR_X;
+            endFarY      = PedroFieldConstants.RED_END_FAR_Y;
             allianceName = "RED";
         }
     }
@@ -393,6 +418,20 @@ public class RPM_Shots_2Color_Blue_Auto extends LinearOpMode {
                     autoSubStep    = 0;
                     isDelayRunning = false;
                 }
+                break;
+
+            case 98:
+                double endX;
+                double endY;
+                if (robotY < 60.0) {
+                    endX = endNearX;
+                    endY = endNearY;
+                } else {
+                    endX = endFarX;
+                    endY = endFarY;
+                }
+                driveToPose(endX, endY, 90.0, false);
+                autoPhase = 99;
                 break;
 
             default:
@@ -577,7 +616,8 @@ public class RPM_Shots_2Color_Blue_Auto extends LinearOpMode {
         }
 
         ElapsedTime timeout = new ElapsedTime();
-        while (opModeIsActive() && follower.isBusy() && timeout.seconds() < DRIVE_TIMEOUT_SEC) {
+        while (opModeIsActive() && follower.isBusy() && timeout.seconds() < DRIVE_TIMEOUT_SEC
+                && (System.currentTimeMillis() - startingTimeMsec) < 29500) {
             follower.update();
             readPoseFromFollower();
             updateTurret();

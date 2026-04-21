@@ -13,6 +13,7 @@ import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.CRServo;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -38,11 +39,11 @@ import java.util.List;
  *   DPAD RIGHT / LEFT — cycle the action for the selected step
  *   START             — lock in sequence and proceed to limelight seeding
  */
-@Autonomous(name = "Worlds_2Color_Red_Auto", preselectTeleOp = "Worlds_2Color_Blue_TeleOp", group = "Match")
-public class Worlds_2Color_Red_Auto extends LinearOpMode {
+@Autonomous(name = "Worlds_2Color_Blue_Auto", preselectTeleOp = "Worlds_2Color_Blue_TeleOp", group = "Match")
+public class RPM_Shots_2Color_Blue_Auto extends LinearOpMode {
 
     // *** ONLY LINE TO CHANGE FOR RED ALLIANCE ***
-    private static final boolean BLUE_ALLIANCE = false;
+    private static final boolean BLUE_ALLIANCE = true;
 
     // =====================================================================
     //  LAUNCHER LOGGING — set to true to enable, false to disable
@@ -66,12 +67,21 @@ public class Worlds_2Color_Red_Auto extends LinearOpMode {
     // =====================================================================
     private static final boolean LAUNCHER_LOGGING_ENABLED = true;
 
+    // Prism PWM constants
+    private static final double NORMAL_RAINBOW = 0.1988;
+    private static final double FAST_RAINBOW   = 0.223;
+    private static final double COLOR_GREEN    = 0.388;
+    private static final double COLOR_BLUE     = 0.611;
+
     private static final double INTAKE_POWER             = 1.0;
+    private static final double TRANSFER_POWER           = 1.0;
     private static final double DRIVE_TIMEOUT_SEC        = 5.0;
     private static final double BALL_LINE_MAX_POWER      = 0.5;
-    private static final double SHOOT_TRANSFER_SEC       = 2.5;
     private static final double BALL_LINE_X_MARGIN_IN    = 9.0;
     private static final double INTAKE_WALL_CLEARANCE_IN = 1.5;
+    private static final double SHOOTER_READY_MAX_WAIT_SEC       = 2.0;  // max wait per ball for RPM+direction
+    private static final double SHOT_DETECT_TIMEOUT_SEC  = 1.5;  // max feed time before assuming ball shot
+    private static final double SHOT_RPM_DROP_FRACTION   = 0.80; // RPM below this fraction = shot detected
 
     // =====================================================================
     //  STEP CONFIGURATION
@@ -114,6 +124,7 @@ public class Worlds_2Color_Red_Auto extends LinearOpMode {
     private DcMotorEx   turretMotor;
     private Limelight3A limelight;
     private Follower    follower;
+    private Servo prism;
 
     // =====================================================================
     //  POS
@@ -142,6 +153,7 @@ public class Worlds_2Color_Red_Auto extends LinearOpMode {
     private boolean     isDelayRunning         = false;
     private ElapsedTime rpmSettleTimer         = new ElapsedTime();
     private boolean     rpmSettleTimerWasReset = true;
+    private ElapsedTime loopTimer              = new ElapsedTime();
 
     // =====================================================================
     //  SEQUENCE STATE
@@ -149,6 +161,7 @@ public class Worlds_2Color_Red_Auto extends LinearOpMode {
     private int     autoPhase        = 0;
     private int     autoSubStep      = 0;
     private int     shootSubStep     = 0;
+    private int     ballsShot        = 0;
     private int     currentStepIndex = 0;
     private boolean line2Picked      = false;
     private boolean line3Picked      = false;
@@ -207,6 +220,7 @@ public class Worlds_2Color_Red_Auto extends LinearOpMode {
                 updateTurret();
                 if (autoPhase < 99) updateLauncher();
                 runAutonomousSequence();
+                updatePrism();
                 updateLogging();
                 displayTelemetry();
             }
@@ -340,11 +354,14 @@ public class Worlds_2Color_Red_Auto extends LinearOpMode {
         switch (autoPhase) {
 
             case 0:
-                if (initialRobotY >= 72.0) {
+                intake.setPower(0);
+                transfer.setPower(0);
+                if (initialRobotY >= 60.0) {
                     double[] pose = shootPose();
                     driveToPose(pose[0], pose[1], pose[2], false);
                 }
                 shootSubStep   = 0;
+                ballsShot      = 0;
                 isDelayRunning = false;
                 autoPhase      = 1;
                 break;
@@ -386,50 +403,57 @@ public class Worlds_2Color_Red_Auto extends LinearOpMode {
     }
 
     // =====================================================================
-    //  SHOOT SEQUENCE
+    //  SHOOT SEQUENCE — RPM-gated, 3 balls
+    //
+    //  Case 0: Wait up to SHOOTER_READY_MAX_WAIT_SEC for RPM + direction ready,
+    //          then start feeding (case 1).
+    //  Case 1: Run intake + transfer at full power. Stop when a shot is
+    //          detected (20% RPM drop) or SHOT_DETECT_TIMEOUT_SEC elapses.
+    //          Increment ballsShot; if 3 done → return true, else → case 0.
     // =====================================================================
-    private boolean executeShootSequence() {
+    private boolean executeShootSequence() {  //1st call to this after driving the transfer and intake are at 0 power
         switch (shootSubStep) {
             case 0:
-                if ((rpmReadyToShoot() && turretAtTarget())
-                        || nonBlockingDelay(PedroRobotConstants.MAX_RPM_TURRET_WAIT_SEC)) {
+                // Short shots (near position): skip full RPM+direction check for balls 2 & 3,
+                // but still wait for RPM to recover above the shot-detection threshold first
+                // to prevent shotDetected() from triggering immediately on re-entry.
+                if (robotY >= 60.0 && ballsShot > 0) {
+                    if (!shotDetected() && nonBlockingDelay(0.1)) {  //forces short shots to wait for  above rpm droop threshold
+                        isDelayRunning = false;
+                        shootSubStep   = 1;
+                    }
+                } else if ((rpmReadyToShoot() && turretAtTarget())
+                        || nonBlockingDelay(SHOOTER_READY_MAX_WAIT_SEC)) {
                     isDelayRunning = false;
-                    shootSubStep = (robotY < 72.0) ? 1 : 3;
+                    shootSubStep   = 1;
                 }
                 return false;
 
             case 1:
-                if (nonBlockingDelay(0.2)) {
-                    isDelayRunning = false;
-                    intake.setPower(0.5);
-                    transfer.setPower(0.30);
-                    shootSubStep = 2;
-                }
-                return false;
-
-            case 2:
-                if (nonBlockingDelay(2.0)) {
-                    isDelayRunning = false;
-                    shootSubStep = 10;
-                }
-                return false;
-
-            case 3:
-                if (nonBlockingDelay(0.1)) {
-                    isDelayRunning = false;
-                    transfer.setPower(1.0);
-                    intake.setPower(INTAKE_POWER);
-                    shootSubStep = 10;
-                }
-                return false;
-
-            case 10:
-                if (nonBlockingDelay(SHOOT_TRANSFER_SEC)) {
+                intake.setPower(INTAKE_POWER);
+                transfer.setPower(TRANSFER_POWER);
+                if (shotDetected()) {
+                    // RPM dropped — real shot detected; stop feeding and wait for recovery
                     isDelayRunning = false;
                     intake.setPower(0);
-                    transfer.setPower(0.0);
-                    shootSubStep = 99;
-                    return true;
+                    transfer.setPower(0);
+                    ballsShot++;
+                    if (ballsShot >= 3) {
+                        ballsShot = 0;
+                        shootSubStep = 99;
+                        return true;
+                    }
+                    shootSubStep = 0;  // wait for RPM recovery before next ball
+                } else if (nonBlockingDelay(SHOT_DETECT_TIMEOUT_SEC)) {
+                    // No RPM drop detected — assume ball shot; keep feeding, just restart timer
+                    isDelayRunning = false;
+                    ballsShot++;
+                    if (ballsShot >= 3) {
+                        intake.setPower(0);
+                        transfer.setPower(0);
+                        ballsShot = 0; shootSubStep = 99; return true;
+                    }
+                    // Stay in case 1 — isDelayRunning=false restarts the timer next iteration
                 }
                 return false;
 
@@ -459,7 +483,11 @@ public class Worlds_2Color_Red_Auto extends LinearOpMode {
             case 2:
                 if (nonBlockingDelay(0.5)) {
                     isDelayRunning = false;
-                    autoSubStep = isLastActionableStep() ? 99 : 3;
+                    if (isLastActionableStep()) {
+                        autoSubStep = 99;
+                    } else {
+                        autoSubStep = 3;
+                    }
                 }
                 return false;
             case 3:
@@ -496,9 +524,12 @@ public class Worlds_2Color_Red_Auto extends LinearOpMode {
                 return false;
 
             case 3:
+                intake.setPower(0);
+                transfer.setPower(0);
                 double[] pose = shootPose();
                 driveToPose(pose[0], pose[1], pose[2], false);
                 shootSubStep   = 0;
+                ballsShot      = 0;
                 isDelayRunning = false;
                 autoSubStep    = 4;
                 return false;
@@ -551,6 +582,8 @@ public class Worlds_2Color_Red_Auto extends LinearOpMode {
             readPoseFromFollower();
             updateTurret();
             updateLauncher();
+            updatePrism();
+            updateLogging();
             displayTelemetry();
         }
 
@@ -592,7 +625,7 @@ public class Worlds_2Color_Red_Auto extends LinearOpMode {
     }
 
     private double[] shootPose() {
-        return (initialRobotY < 72.0) ? nearShootPose : farShootPose;
+        return (initialRobotY < 60.0) ? nearShootPose : farShootPose;
     }
 
     private void readPoseFromFollower() {
@@ -695,8 +728,8 @@ public class Worlds_2Color_Red_Auto extends LinearOpMode {
         avgY /= ySamples.size();
 
         // Limelight WCS (meters, field-center origin) → Pedro inches (audience-left corner)
-        double camPedroX = avgY * 39.37 + 72.0 + 6.0;  // +4 blue +5 red in empirical correction
-        double camPedroY = -avgX * 39.37 + 72.0;
+        double camPedroX = avgY * 39.37 + 60.0 + 4.0;  // +4 in empirical correction
+        double camPedroY = -avgX * 39.37 + 60.0;
 
         double   minDist  = Double.MAX_VALUE;
         double[] bestPose = null;
@@ -766,6 +799,7 @@ public class Worlds_2Color_Red_Auto extends LinearOpMode {
         turretMotor.setTargetPositionTolerance((int) PedroRobotConstants.TURRET_TICKS_PER_DEG);
 
         follower = PossumsConstants.createFollower(hardwareMap);
+        prism    = hardwareMap.get(Servo.class, "prism");
 
         if (LAUNCHER_LOGGING_ENABLED) {
             try {
@@ -840,6 +874,25 @@ public class Worlds_2Color_Red_Auto extends LinearOpMode {
         if (launcherLog != null) { launcherLog.flush(); launcherLog.close(); }
     }
 
+    private void updatePrism() {
+        //- Fast rainbow — follower driving (highest priority)
+        //- Blue — waiting for RPM + turret ready (shootSubStep == 0 during shoot phase)
+        //- Green — feeding, waiting for shot detect (shootSubStep == 1)
+        //- OFF — idle/done
+
+        boolean inShootPhase = (autoPhase == 1)
+                || (autoPhase == 2 && autoSubStep == 4);
+        if (follower.isBusy()) {
+            prism.setPosition(FAST_RAINBOW);
+        } else if (inShootPhase && shootSubStep == 1) {
+            prism.setPosition(COLOR_GREEN);
+        } else if (inShootPhase && shootSubStep == 0) {
+            prism.setPosition(COLOR_BLUE);
+        } else {
+            prism.setPosition(0.0);
+        }
+    }
+
     private boolean nonBlockingDelay(double sec) {
         if (!isDelayRunning) { delayTimer.reset(); isDelayRunning = true; return false; }
         if (delayTimer.seconds() < sec) return false;
@@ -853,8 +906,19 @@ public class Worlds_2Color_Red_Auto extends LinearOpMode {
     }
 
     private boolean turretAtTarget() {
-        double actualDeg = turretMotor.getCurrentPosition() / PedroRobotConstants.TURRET_TICKS_PER_DEG;
-        return Math.abs(actualDeg - turretAngleDeg) <= PedroRobotConstants.TURRET_ACCURACY_DEG;
+        double actualDeg  = turretMotor.getCurrentPosition() / PedroRobotConstants.TURRET_TICKS_PER_DEG;
+        // Near/short shots (large Y) need less direction precision — allow 2x tolerance
+        double tolerance;
+        if (robotY >= 60.0) {
+            tolerance = PedroRobotConstants.TURRET_ACCURACY_DEG * 2.0;  // near shot — looser
+        } else {
+            tolerance = PedroRobotConstants.TURRET_ACCURACY_DEG;         // far shot — tight
+        }
+        return Math.abs(actualDeg - turretAngleDeg) <= tolerance;
+    }
+
+    private boolean shotDetected() {
+        return rightLauncher.getVelocity() < launcherVelocityCmd * SHOT_RPM_DROP_FRACTION;
     }
 
     private boolean rpmAccurate() {
@@ -873,17 +937,21 @@ public class Worlds_2Color_Red_Auto extends LinearOpMode {
     private void displayTelemetry() {
         long elapsed = (System.currentTimeMillis() - startingTimeMsec) / 1000;
         telemetry.addData("Elapsed Sec", elapsed);
+        telemetry.addData("Loop ms",      "%.1f", loopTimer.milliseconds());
+        loopTimer.reset();
         telemetry.addData("Alliance", allianceName);
-        telemetry.addData("Phase / SubStep / ShootSub",
-                "%d / %d / %d", autoPhase, autoSubStep, shootSubStep);
-        telemetry.addData("Config Step", currentStepIndex + 1);
+        telemetry.addData("Phase / SubStep / ShootSub / Balls",
+                "%d / %d / %d / %d", autoPhase, autoSubStep, shootSubStep, ballsShot);
         telemetry.addData("Robot X/Y/H", "%.1f in  %.1f in  %.1f deg",
                 robotX, robotY, robotHeading);
         telemetry.addData("Turret Angle", "%.1f deg", turretAngleDeg);
         telemetry.addData("Pedro Busy", follower.isBusy());
         telemetry.addData("Launcher Tic/second cmd/act",
                 "%.0f / %.0f", launcherVelocityCmd, rightLauncher.getVelocity());
-        telemetry.addData("RPM Accurate", rpmAccurate());
+        telemetry.addData("RPM Ready",    rpmReadyToShoot());
+        telemetry.addData("Turret Ready", turretAtTarget());
+        telemetry.addData("Shot Detect",  shotDetected());
+        telemetry.addData("Balls Shot",   ballsShot);
         for (int i = 0; i < stepOptionIndex.size(); i++) {
             String marker = (i == currentStepIndex && autoPhase == 2) ? ">" : " ";
             telemetry.addData(marker + " Step " + (i + 1),

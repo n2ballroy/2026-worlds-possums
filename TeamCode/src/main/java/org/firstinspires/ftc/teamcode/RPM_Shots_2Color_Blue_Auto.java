@@ -79,7 +79,7 @@ public class RPM_Shots_2Color_Blue_Auto extends LinearOpMode {
     private static final double BALL_LINE_MAX_POWER      = 0.5;
     private static final double BALL_LINE_X_MARGIN_IN    = 9.0;
     private static final double INTAKE_WALL_CLEARANCE_IN = 1.5;
-    private static final double SHOOTER_READY_MAX_WAIT_SEC       = 2.0;  // max wait per ball for RPM+direction
+    private static final double SHOOTER_READY_MAX_WAIT_SEC      = 2.0;  // max wait per ball for RPM+direction
     private static final double SHOT_DETECT_TIMEOUT_SEC  = 1.5;  // max feed time before assuming ball shot
     private static final double SHOT_RPM_DROP_FRACTION   = 0.80; // RPM below this fraction = shot detected
 
@@ -163,6 +163,7 @@ public class RPM_Shots_2Color_Blue_Auto extends LinearOpMode {
     private int     autoPhase        = 0;
     private int     autoSubStep      = 0;
     private int     shootSubStep     = 0;
+    private boolean endGameStarted   = false;
     private int     ballsShot        = 0;
     private int     currentStepIndex = 0;
     private boolean line2Picked      = false;
@@ -222,7 +223,8 @@ public class RPM_Shots_2Color_Blue_Auto extends LinearOpMode {
 
                 if (elapsedSec >= 29.5) break;  //this will run stopRobot()
 
-                if (elapsedSec >= 27.0 && autoPhase < 98) {
+                if (elapsedSec >= 27.0 && !endGameStarted) {
+                    endGameStarted  = true;
                     follower.breakFollowing();
                     intake.setPower(0);
                     transfer.setPower(0);
@@ -431,7 +433,10 @@ public class RPM_Shots_2Color_Blue_Auto extends LinearOpMode {
                     endY = endFarY;
                 }
                 driveToPose(endX, endY, 90.0, true);
-                autoPhase = 1000;
+                autoPhase = 49;
+                break;
+
+            case 49:
                 break;
 
             default:

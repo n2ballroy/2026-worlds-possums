@@ -164,6 +164,7 @@ public class RPM_Shots_2Color_Red_Auto extends LinearOpMode {
     private int     autoPhase        = 0;
     private int     autoSubStep      = 0;
     private int     shootSubStep     = 0;
+    private boolean endGameStarted   = false;
     private int     ballsShot        = 0;
     private int     currentStepIndex = 0;
     private boolean line2Picked      = false;
@@ -221,9 +222,10 @@ public class RPM_Shots_2Color_Red_Auto extends LinearOpMode {
             while (opModeIsActive()) {
                 double elapsedSec = (System.currentTimeMillis() - startingTimeMsec) / 1000.0;
 
-                if (elapsedSec >= 29.5 | autoPhase==1000) break;  //this will run stopRobot()
+                if (elapsedSec >= 29.5) break;  //this will run stopRobot()
 
-                if (elapsedSec >= 27.0 && autoPhase < 98) {
+                if (elapsedSec >= 27.0 && !endGameStarted) {
+                    endGameStarted  = true;
                     follower.breakFollowing();
                     intake.setPower(0);
                     transfer.setPower(0);
@@ -432,7 +434,10 @@ public class RPM_Shots_2Color_Red_Auto extends LinearOpMode {
                     endY = endFarY;
                 }
                 driveToPose(endX, endY, 90.0, false);
-                autoPhase = 1000;
+                autoPhase = 49;
+                break;
+
+            case 49:
                 break;
 
             default:

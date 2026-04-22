@@ -37,8 +37,8 @@ import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
  *   Pedro 0° = blue wall = Limelight +Y = Limelight 90°. Offset = -90°.
  *   This conversion is alliance-independent (both use absolute field coordinates).
  */
-// *** RED VERSION: change name="Worlds_2Color_Red_TeleOp" ***
-@TeleOp(name = "Worlds_2Color_Blue_TeleOp", group = "TeleOp")
+// *** RED VERSION: change name="RPM_2Color_Blue_TeleOp" ***
+@TeleOp(name = "RPM_Shots_2Color_Blue_TeleOp", group = "TeleOp")
 public class RPM_Shots_2Color_Blue_TeleOp extends LinearOpMode {
 
     // *** ONLY LINE TO CHANGE FOR RED ALLIANCE ***
@@ -109,7 +109,7 @@ public class RPM_Shots_2Color_Blue_TeleOp extends LinearOpMode {
         boolean prevA     = false;
         boolean prevStart = false;
         ElapsedTime dpadTimer = new ElapsedTime();
-
+        double turretInitOffsetTicks =0;
         Rightshooter     = hardwareMap.get(DcMotorEx.class,            PedroRobotConstants.RIGHT_LAUNCHER_CONFIG_NAME);
         Leftshooter      = hardwareMap.get(DcMotorEx.class,            PedroRobotConstants.LEFT_LAUNCHER_CONFIG_NAME);
         turret           = hardwareMap.get(DcMotorEx.class,            PedroRobotConstants.TURRET_MOTOR_CONFIG_NAME);
@@ -155,7 +155,6 @@ public class RPM_Shots_2Color_Blue_TeleOp extends LinearOpMode {
         frontright.setDirection(DcMotor.Direction.FORWARD);
         telemetry.setMsTransmissionInterval(11);
         turret.setVelocity(1800);
-        turret.setTargetPosition(0);
         turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         turret.setTargetPosition(0);
         turret.setTargetPositionTolerance(0);
@@ -170,7 +169,7 @@ public class RPM_Shots_2Color_Blue_TeleOp extends LinearOpMode {
             pinpointOdometry.setPosX(QuickOdometryStorage.x, DistanceUnit.INCH);
             pinpointOdometry.setPosY(QuickOdometryStorage.y, DistanceUnit.INCH);
             pinpointOdometry.setHeading(QuickOdometryStorage.heading, AngleUnit.DEGREES);
-            turret.setTargetPosition((int) (QuickOdometryStorage.turretDegrees * PedroRobotConstants.TURRET_TICKS_PER_DEG));
+            turretInitOffsetTicks=QuickOdometryStorage.turretDegrees * PedroRobotConstants.TURRET_TICKS_PER_DEG;
             sleep(500);
         } else {
             pinpointOdometry.setPosX(0.0, DistanceUnit.INCH);
@@ -213,11 +212,11 @@ public class RPM_Shots_2Color_Blue_TeleOp extends LinearOpMode {
 
             double rawError    = Math.toRadians(Target_Heading - Yaw_Pinpoint + Offset);
             double headingError = Math.toDegrees(Math.atan2(Math.sin(rawError), Math.cos(rawError)));
-            Target_Ticks = PedroRobotConstants.TURRET_TICKS_PER_DEG * headingError;
+            Target_Ticks = PedroRobotConstants.TURRET_TICKS_PER_DEG * headingError - turretInitOffsetTicks;
 
             if (gamepad1.right_bumper) {
                 if (Y_Pinpoint >= 60.0) {
-                    intake.setPower(INTAKE_POWER);
+                    intake.setPower(-INTAKE_POWER);
                     transfer.setPower(TRANSFER_POWER);
                 } else {
                     executeLongShot();
@@ -269,6 +268,8 @@ public class RPM_Shots_2Color_Blue_TeleOp extends LinearOpMode {
             telemetry.addData("Distance",  Distance);
             telemetry.addData("X",         X_Pinpoint);
             telemetry.addData("Y",         Y_Pinpoint);
+            telemetry.addData("Heading deg",Yaw_Pinpoint);
+            telemetry.addData("Turret deg", (turret.getCurrentPosition()+turretInitOffsetTicks)/PedroRobotConstants.TURRET_TICKS_PER_DEG);
             telemetry.addData("Left velo", Leftshooter.getVelocity());
             telemetry.update();
 
@@ -293,7 +294,7 @@ public class RPM_Shots_2Color_Blue_TeleOp extends LinearOpMode {
                 double llX = botpose.getPosition().x;
                 double llY = botpose.getPosition().y;
 
-                double pinX   = llY * 39.37 + 72.0+8.0;
+                double pinX   = llY * 39.37 + 72.0;
                 double pinY   = -llX * 39.37 + 72.0;
                 double llYaw  = botpose.getOrientation().getYaw(AngleUnit.DEGREES);
                 double heading = llYaw - 90.0;
@@ -330,7 +331,7 @@ public class RPM_Shots_2Color_Blue_TeleOp extends LinearOpMode {
                 }
                 break;
             case 1:
-                intake.setPower(INTAKE_POWER);
+                intake.setPower(-INTAKE_POWER);
                 transfer.setPower(TRANSFER_POWER);
                 if (shotDetected()) {
                     isDelayRunning = false;

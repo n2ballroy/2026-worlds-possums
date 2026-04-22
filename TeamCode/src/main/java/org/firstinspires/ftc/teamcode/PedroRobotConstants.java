@@ -49,7 +49,7 @@ public class PedroRobotConstants {
     // -------------------------------------------------------------------------
     public static final double RPM_SETTLE_TIME_SECONDS       = 0.125;
     public static final double MAX_RPM_TURRET_WAIT_SEC       = 1.5;   // max wait after stop for RPM+turret
-    public static final double TURRET_ACCURACY_DEG           = 1.0;   // turret considered on-target within this angle
+    public static final double TURRET_ACCURACY_DEG           = .5;   // turret considered on-target within this angle
 
 
 }

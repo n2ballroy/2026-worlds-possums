@@ -22,8 +22,8 @@ public class PedroFieldConstants {
     // -------------------------------------------------------------------------
     // Shooting target — fixed field location the turret always faces
     // -------------------------------------------------------------------------
-    public static final double BLUE_SHOOT_TARGET_X = 9.75;
-    public static final double RED_SHOOT_TARGET_X = 144.0-11.75;
+    public static final double BLUE_SHOOT_TARGET_X = 13.75;
+    public static final double RED_SHOOT_TARGET_X = 144.0-9.75;
     public static final double SHOOT_TARGET_Y = 137.5;
 
     // -------------------------------------------------------------------------

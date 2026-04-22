@@ -13,9 +13,9 @@ import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.CRServo;
-import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
@@ -39,11 +39,12 @@ import java.util.List;
  *   DPAD RIGHT / LEFT — cycle the action for the selected step
  *   START             — lock in sequence and proceed to limelight seeding
  */
-@Autonomous(name = "RPM_Shots_2Color_Blue_Auto", preselectTeleOp = "RPM_Shots_2Color_Blue_TeleOp", group = "Match")
-public class RPM_Shots_2Color_Blue_Auto extends LinearOpMode {
+@Autonomous(name = "RPM_Shots_2Color_Red_Auto", preselectTeleOp = "RPM_Shots_2Color_Red_TeleOp", group = "Match")
+public class RPM_Shots_2Color_Red_Auto extends LinearOpMode {
 
     // *** ONLY LINE TO CHANGE FOR RED ALLIANCE ***
-    private static final boolean BLUE_ALLIANCE = true;
+    private static final boolean BLUE_ALLIANCE = false;
+    private static final double CAMERA_X_FUDGE = -2.0;
 
     // =====================================================================
     //  LAUNCHER LOGGING — set to true to enable, false to disable
@@ -220,7 +221,7 @@ public class RPM_Shots_2Color_Blue_Auto extends LinearOpMode {
             while (opModeIsActive()) {
                 double elapsedSec = (System.currentTimeMillis() - startingTimeMsec) / 1000.0;
 
-                if (elapsedSec >= 29.5) break;  //this will run stopRobot()
+                if (elapsedSec >= 29.5 | autoPhase==1000) break;  //this will run stopRobot()
 
                 if (elapsedSec >= 27.0 && autoPhase < 98) {
                     follower.breakFollowing();
@@ -430,7 +431,7 @@ public class RPM_Shots_2Color_Blue_Auto extends LinearOpMode {
                     endX = endFarX;
                     endY = endFarY;
                 }
-                driveToPose(endX, endY, 90.0, true);
+                driveToPose(endX, endY, 90.0, false);
                 autoPhase = 1000;
                 break;
 
@@ -768,7 +769,7 @@ public class RPM_Shots_2Color_Blue_Auto extends LinearOpMode {
         avgY /= ySamples.size();
 
         // Limelight WCS (meters, field-center origin) → Pedro inches (audience-left corner)
-        double camPedroX = avgY * 39.37 + 72.0 + 0;  // +4 in empirical correction
+        double camPedroX = avgY * 39.37 + 72.0 + CAMERA_X_FUDGE;  // +4 in empirical correction
         double camPedroY = -avgX * 39.37 + 72.0;
 
         double   minDist  = Double.MAX_VALUE;

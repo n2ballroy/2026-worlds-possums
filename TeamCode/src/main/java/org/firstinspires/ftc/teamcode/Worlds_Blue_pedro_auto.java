@@ -46,7 +46,7 @@ import java.util.List;
  */
 //@TeleOp(name = "Match7_Pedro_Auto", group = "Match")
 @Autonomous(name = "Worlds_Blue_Pedro_Auto", preselectTeleOp = "MainTeleOpBlueLLReset", group = "Match")
-//@Disabled
+@Disabled
 public class Worlds_Blue_pedro_auto extends LinearOpMode {
 
     private static final double BALL_LINE_X_MARGIN_IN = 9.0;

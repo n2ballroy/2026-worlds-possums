@@ -9,6 +9,7 @@ import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -41,6 +42,7 @@ import java.util.List;
  *   START             — lock in sequence and proceed to limelight seeding
  */
 @Autonomous(name = "Worlds_2Color_Blue_Auto", preselectTeleOp = "Worlds_2Color_Blue_TeleOp", group = "Match")
+@Disabled
 public class Worlds_2Color_Blue_Auto extends LinearOpMode {
 
     // *** ONLY LINE TO CHANGE FOR RED ALLIANCE ***

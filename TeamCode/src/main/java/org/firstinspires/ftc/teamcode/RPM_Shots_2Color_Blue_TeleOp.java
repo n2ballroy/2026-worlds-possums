@@ -12,6 +12,9 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.JavaUtil;
+
+import java.util.ArrayList;
+import java.util.List;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
@@ -283,39 +286,57 @@ public class RPM_Shots_2Color_Blue_TeleOp extends LinearOpMode {
      * Limelight WCS → Pedro conversion is alliance-independent (both are absolute field coords).
      */
     private void reseedFromLimelight() {
-        long deadline = System.currentTimeMillis() + 2000;
-        while (opModeIsActive() && System.currentTimeMillis() < deadline) {
+        final int  TARGET_SAMPLES = 6;
+        final long DEADLINE_MS    = System.currentTimeMillis() + 1000;
+
+        List<Double> xSamples     = new ArrayList<>();
+        List<Double> ySamples     = new ArrayList<>();
+        List<Double> hSamples     = new ArrayList<>();
+        double       lastTimestamp = -1;
+
+        while (opModeIsActive() && System.currentTimeMillis() < DEADLINE_MS
+                && xSamples.size() < TARGET_SAMPLES) {
             LLResult result = limelight.getLatestResult();
             if (result != null && result.isValid()
                     && result.getBotpose() != null
-                    && result.getBotposeTagCount() > 0) {
-
+                    && result.getBotposeTagCount() > 0
+                    && result.getTimestamp() != lastTimestamp) {
+                lastTimestamp = result.getTimestamp();
                 Pose3D botpose = result.getBotpose();
-                double llX = botpose.getPosition().x;
-                double llY = botpose.getPosition().y;
-
-                double pinX   = llY * 39.37 + 72.0;
-                double pinY   = -llX * 39.37 + 72.0;
-                double llYaw  = botpose.getOrientation().getYaw(AngleUnit.DEGREES);
-                double heading = llYaw - 90.0;
-
-                pinpointOdometry.setPosX(pinX, DistanceUnit.INCH);
-                pinpointOdometry.setPosY(pinY, DistanceUnit.INCH);
-                pinpointOdometry.setHeading(heading, AngleUnit.DEGREES);
-
-                telemetry.addData("LL Reset OK", "X=%.1f  Y=%.1f  H=%.1f deg", pinX, pinY, heading);
-                telemetry.addData("Tags seen", result.getBotposeTagCount());
-                telemetry.update();
-                return;
+                xSamples.add(botpose.getPosition().x);
+                ySamples.add(botpose.getPosition().y);
+                hSamples.add(botpose.getOrientation().getYaw(AngleUnit.DEGREES));
             }
             sleep(33);
         }
-        LLResult last = limelight.getLatestResult();
-        String reason = last == null                    ? "null result"
-                      : !last.isValid()                ? "isValid=false"
-                      : last.getBotpose() == null      ? "botpose=null"
-                      : "tagCount=" + last.getBotposeTagCount();
-        telemetry.addData("LL Reset FAILED", reason);
+
+        if (xSamples.isEmpty()) {
+            telemetry.addData("LL Reset FAILED", "no valid samples in 3s");
+            telemetry.update();
+            return;
+        }
+
+        double avgX = 0, avgY = 0, sinSum = 0, cosSum = 0;
+        for (int i = 0; i < xSamples.size(); i++) {
+            avgX   += xSamples.get(i);
+            avgY   += ySamples.get(i);
+            sinSum += Math.sin(Math.toRadians(hSamples.get(i)));
+            cosSum += Math.cos(Math.toRadians(hSamples.get(i)));
+        }
+        avgX /= xSamples.size();
+        avgY /= xSamples.size();
+        double avgYaw = Math.toDegrees(Math.atan2(sinSum, cosSum));
+
+        double pinX    = avgY * 39.37 + 72.0;
+        double pinY    = -avgX * 39.37 + 72.0;
+        double heading = avgYaw - 90.0;
+
+        pinpointOdometry.setPosX(pinX, DistanceUnit.INCH);
+        pinpointOdometry.setPosY(pinY, DistanceUnit.INCH);
+        pinpointOdometry.setHeading(heading, AngleUnit.DEGREES);
+
+        telemetry.addData("LL Reset OK", "X=%.1f  Y=%.1f  H=%.1f deg", pinX, pinY, heading);
+        telemetry.addData("Samples", xSamples.size());
         telemetry.update();
     }
 

@@ -39,24 +39,24 @@ public class PedroFieldConstants {
             FIELD_DEPTH_IN - PedroRobotConstants.ROBOT_HALF_WIDTH_IN - 3;
 
     /** Audience-wall start, right side  (heading 90 deg = facing into field) */
-    public static final double[] BLUE_AUDIENCE_START_POSE_1 = { FIELD_WIDTH_IN / 2.0 - PedroRobotConstants.ROBOT_HALF_WIDTH_IN - 1.0,   AUDIENCE_WALL_START_Y, 90.0 };
+    public static final double[] BLUE_AUDIENCE_START_POSE_1 = { FIELD_WIDTH_IN / 2.0 - PedroRobotConstants.ROBOT_HALF_WIDTH_IN - 0.5,   AUDIENCE_WALL_START_Y, 90.0 };
 
     /** Audience-wall start, tile boundry on left side */
-    public static final double[] BLUE_AUDIENCE_START_POSE_2 = {FIELD_WIDTH_IN / 2.0 - 24.0 + PedroRobotConstants.ROBOT_HALF_WIDTH_IN,   AUDIENCE_WALL_START_Y, 90.0 };
+    public static final double[] BLUE_AUDIENCE_START_POSE_2 = {FIELD_WIDTH_IN / 2.0 - 24.0 + PedroRobotConstants.ROBOT_HALF_WIDTH_IN + 0.5,   AUDIENCE_WALL_START_Y, 90.0 };
 
     /** Audience-wall start, tile boundry on right side */
-    public static final double[] BLUE_AUDIENCE_START_POSE_3 = { FIELD_WIDTH_IN / 2.0 - 24.0 - PedroRobotConstants.ROBOT_HALF_WIDTH_IN + .25,   AUDIENCE_WALL_START_Y, 90.0 };
+    public static final double[] BLUE_AUDIENCE_START_POSE_3 = { FIELD_WIDTH_IN / 2.0 - 24.0 - PedroRobotConstants.ROBOT_HALF_WIDTH_IN + 0.5,   AUDIENCE_WALL_START_Y, 90.0 };
 
     /** Back-wall start  (heading 0 deg = facing right toward blue wall) */
     public static final double[] BLUE_BACK_WALL_START_POSE = { 29.0, BACK_WALL_START_Y, 0.0 };
 
     // Red start poses — mirrored: Red X = 144 - Blue X, heading = (180 - Blue heading + 360) % 360
     /** Audience-wall start, left side  (heading 90 deg = facing into field) */
-    public static final double[] RED_AUDIENCE_START_POSE_1 = { FIELD_WIDTH_IN / 2.0 + PedroRobotConstants.ROBOT_HALF_WIDTH_IN + 1.0,   AUDIENCE_WALL_START_Y, 90.0 };
+    public static final double[] RED_AUDIENCE_START_POSE_1 = { FIELD_WIDTH_IN / 2.0 + PedroRobotConstants.ROBOT_HALF_WIDTH_IN + 0.5,   AUDIENCE_WALL_START_Y, 90.0 };
     /** Audience-wall start, tile boundary on right side */
-    public static final double[] RED_AUDIENCE_START_POSE_2 = { FIELD_WIDTH_IN / 2.0 + 24.0 - PedroRobotConstants.ROBOT_HALF_WIDTH_IN,   AUDIENCE_WALL_START_Y, 90.0 };
+    public static final double[] RED_AUDIENCE_START_POSE_2 = { FIELD_WIDTH_IN / 2.0 + 24.0 - PedroRobotConstants.ROBOT_HALF_WIDTH_IN - 0.5,   AUDIENCE_WALL_START_Y, 90.0 };
     /** Audience-wall start, tile boundary on left side */
-    public static final double[] RED_AUDIENCE_START_POSE_3 = { FIELD_WIDTH_IN / 2.0 + 24.0 + PedroRobotConstants.ROBOT_HALF_WIDTH_IN - 0.25, AUDIENCE_WALL_START_Y, 90.0 };
+    public static final double[] RED_AUDIENCE_START_POSE_3 = { FIELD_WIDTH_IN / 2.0 + 24.0 + PedroRobotConstants.ROBOT_HALF_WIDTH_IN - 0.5, AUDIENCE_WALL_START_Y, 90.0 };
     /** Back-wall start  (heading 180 deg = facing left toward red wall) */
     public static final double[] RED_BACK_WALL_START_POSE  = { 115.0, BACK_WALL_START_Y, 180.0 };
 

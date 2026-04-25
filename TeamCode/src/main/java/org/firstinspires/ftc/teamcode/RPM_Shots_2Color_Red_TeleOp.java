@@ -199,7 +199,7 @@ import java.util.List;
              Delta__Y_    = Goal_Y - Y_Pinpoint;
              Target_Heading = Math.toDegrees(Math.atan2(Delta__Y_, Delta__X_));
              Distance       = Math.sqrt(Math.pow(Delta__X_, 2) + Math.pow(Delta__Y_, 2));
-             Shooter_Speed  = (int) (1160.0 + Distance * 3.75);
+             Shooter_Speed  = (int) (1160.0 + Distance * 3.5);
 
              if ((gamepad1.dpad_left || gamepad1.dpad_right) && dpadTimer.milliseconds() > 150) {  //about 6 deg/sec when held down
                  if (gamepad1.dpad_left) Offset++;
@@ -369,7 +369,7 @@ import java.util.List;
 
      private boolean rpmReadyToShoot() {
          return Shooter_Speed > 933
-                 && Math.abs(Shooter_Speed - Rightshooter.getVelocity()) <= 94;
+                 && Math.abs(Shooter_Speed - Rightshooter.getVelocity()) <= 70;  //was 94
      }
 
      private boolean turretAtTarget() {

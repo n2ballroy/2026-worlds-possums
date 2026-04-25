@@ -110,7 +110,7 @@ public class PedroFieldConstants {
     // -------------------------------------------------------------------------
     public static final double BLUE_END_NEAR_X = 37.0;
     public static final double BLUE_END_NEAR_Y = 8.0;
-    public static final double BLUE_END_FAR_X  = 37.0;
+    public static final double BLUE_END_FAR_X  = 40.0;
     public static final double BLUE_END_FAR_Y  = 120.0;
     public static final double RED_END_NEAR_X  = 144.0-BLUE_END_NEAR_X;
     public static final double RED_END_NEAR_Y  = BLUE_END_NEAR_Y;

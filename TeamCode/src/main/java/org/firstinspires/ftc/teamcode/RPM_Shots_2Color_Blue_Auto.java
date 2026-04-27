@@ -869,7 +869,7 @@ public class RPM_Shots_2Color_Blue_Auto extends LinearOpMode {
         double distToGoal = Math.hypot(
                 robotX - shootTargetX,
                 robotY - PedroFieldConstants.SHOOT_TARGET_Y);
-        launcherVelocityCmd = 1160 + distToGoal * 3.75;
+        launcherVelocityCmd = 1160 + distToGoal * 3.5;
         rightLauncher.setVelocity(launcherVelocityCmd);
         leftLauncher.setVelocity(launcherVelocityCmd);
     }
@@ -947,7 +947,7 @@ public class RPM_Shots_2Color_Blue_Auto extends LinearOpMode {
 
     private boolean rpmReadyToShoot() {
         return (launcherVelocityCmd > 933
-                && Math.abs(launcherVelocityCmd - rightLauncher.getVelocity()) <= 94);
+                && Math.abs(launcherVelocityCmd - rightLauncher.getVelocity()) <= 70);
     }
 
     private boolean turretAtTarget() {

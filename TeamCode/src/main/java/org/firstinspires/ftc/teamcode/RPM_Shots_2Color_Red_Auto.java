@@ -870,7 +870,7 @@ public class RPM_Shots_2Color_Red_Auto extends LinearOpMode {
         double distToGoal = Math.hypot(
                 robotX - shootTargetX,
                 robotY - PedroFieldConstants.SHOOT_TARGET_Y);
-        launcherVelocityCmd = 1160 + distToGoal * 3.75;
+        launcherVelocityCmd = 1160 + distToGoal * 3.5;
         rightLauncher.setVelocity(launcherVelocityCmd);
         leftLauncher.setVelocity(launcherVelocityCmd);
     }
@@ -948,7 +948,7 @@ public class RPM_Shots_2Color_Red_Auto extends LinearOpMode {
 
     private boolean rpmReadyToShoot() {
         return (launcherVelocityCmd > 933
-                && Math.abs(launcherVelocityCmd - rightLauncher.getVelocity()) <= 94);
+                && Math.abs(launcherVelocityCmd - rightLauncher.getVelocity()) <= 70);
     }
 
     private boolean turretAtTarget() {
@@ -969,7 +969,7 @@ public class RPM_Shots_2Color_Red_Auto extends LinearOpMode {
 
     private boolean rpmAccurate() {
         double err = Math.abs(launcherVelocityCmd - rightLauncher.getVelocity());
-        if (err < 9 && launcherVelocityCmd > 933) {
+        if (err < 20 && launcherVelocityCmd > 933) {
             if (rpmSettleTimerWasReset) { rpmSettleTimer.reset(); rpmSettleTimerWasReset = false; }
             return rpmSettleTimer.seconds() >= PedroRobotConstants.RPM_SETTLE_TIME_SECONDS;
         }

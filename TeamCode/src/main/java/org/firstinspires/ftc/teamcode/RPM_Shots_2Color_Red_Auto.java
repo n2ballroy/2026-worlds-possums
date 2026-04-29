@@ -871,7 +871,7 @@ public class RPM_Shots_2Color_Red_Auto extends LinearOpMode {
         double distToGoal = Math.hypot(
                 robotX - shootTargetX,
                 robotY - PedroFieldConstants.SHOOT_TARGET_Y);
-        launcherVelocityCmd = 1160 + distToGoal * 3.5;
+        launcherVelocityCmd = 1160 + distToGoal * 3.3;
         rightLauncher.setVelocity(launcherVelocityCmd);
         leftLauncher.setVelocity(launcherVelocityCmd);
     }

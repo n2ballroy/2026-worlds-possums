@@ -68,6 +68,7 @@ public class RPM_Shots_2Color_Blue_TeleOp extends LinearOpMode {
     private static final double SHOOTER_READY_MAX_WAIT_SEC = 2.0;
     private static final double SHOT_DETECT_TIMEOUT_SEC    = 1.5;
     private static final double SHOT_RPM_DROP_FRACTION     = 0.80;
+    private static double SHOOTERGAIN = 1.0;
 
     public DcMotorEx getIntake() {
         return intake;
@@ -203,11 +204,16 @@ public class RPM_Shots_2Color_Blue_TeleOp extends LinearOpMode {
             Delta__Y_    = Goal_Y - Y_Pinpoint;
             Target_Heading = Math.toDegrees(Math.atan2(Delta__Y_, Delta__X_));
             Distance       = Math.sqrt(Math.pow(Delta__X_, 2) + Math.pow(Delta__Y_, 2));
-            Shooter_Speed  = (int) (1160.0 + Distance * 3.5);
+            Shooter_Speed  = (int) (1160.0 + Distance * 3.3);
 
-            if ((gamepad1.dpad_left || gamepad1.dpad_right) && dpadTimer.milliseconds() > 150) {  //about 6 deg/sec when held down
+            if ((gamepad1.dpad_left || gamepad1.dpad_right) && dpadTimer.milliseconds()> 150) {  //about 6 deg/sec when held down
                 if (gamepad1.dpad_left) Offset++;
                 else                   Offset--;
+                dpadTimer.reset();
+            }
+            if ((gamepad1.dpad_down || gamepad1.dpad_up) && dpadTimer.milliseconds() > 150) {  //about 6 deg/sec when held down
+                if (gamepad1.dpad_down) SHOOTERGAIN=SHOOTERGAIN/1.00166;
+                else                   SHOOTERGAIN=SHOOTERGAIN*1.00166;;
                 dpadTimer.reset();
             }
 

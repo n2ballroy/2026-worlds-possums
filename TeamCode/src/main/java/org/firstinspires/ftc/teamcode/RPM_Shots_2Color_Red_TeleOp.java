@@ -83,6 +83,7 @@ import java.util.List;
      private static final double CAMERA_X_FUDGE = 0.0;
      private static final double CAMERA_Y_FUDGE = 3.0;
      private static final double CAMERA_H_FUDGE = -3.0;
+     private static double SHOOTERGAIN = 1.0;
 
      // Shooting state — RPM-gated long-shot state machine
      private int         shootSubStep   = 0;
@@ -202,14 +203,18 @@ import java.util.List;
              Delta__Y_    = Goal_Y - Y_Pinpoint;
              Target_Heading = Math.toDegrees(Math.atan2(Delta__Y_, Delta__X_));
              Distance       = Math.sqrt(Math.pow(Delta__X_, 2) + Math.pow(Delta__Y_, 2));
-             Shooter_Speed  = (int) (1160.0 + Distance * 3.5);
+             Shooter_Speed  = (int) ( (1160.0 + Distance * 3.3)* SHOOTERGAIN);
 
              if ((gamepad1.dpad_left || gamepad1.dpad_right) && dpadTimer.milliseconds() > 150) {  //about 6 deg/sec when held down
                  if (gamepad1.dpad_left) Offset++;
                  else                   Offset--;
                  dpadTimer.reset();
              }
-
+             if ((gamepad1.dpad_down || gamepad1.dpad_up) && dpadTimer.milliseconds() > 150) {  //about 6 deg/sec when held down
+                 if (gamepad1.dpad_down) SHOOTERGAIN=SHOOTERGAIN/1.00166;
+                 else                   SHOOTERGAIN=SHOOTERGAIN*1.00166;;
+                 dpadTimer.reset();
+             }
              // START — reseed pinpoint from Limelight (robot must see an AprilTag)
              if (gamepad1.start && !prevStart) {
                  reseedFromLimelight();

@@ -80,6 +80,9 @@ import java.util.List;
      private static final double COLOR_GREEN    = 0.388;
      private static final double COLOR_BLUE     = 0.611;
      private static final double COLOR_OFF      = 0.0;
+     private static final double CAMERA_X_FUDGE = 0.0;
+     private static final double CAMERA_Y_FUDGE = 3.0;
+     private static final double CAMERA_H_FUDGE = -3.0;
 
      // Shooting state — RPM-gated long-shot state machine
      private int         shootSubStep   = 0;
@@ -327,9 +330,9 @@ import java.util.List;
          avgY /= xSamples.size();
          double avgYaw = Math.toDegrees(Math.atan2(sinSum, cosSum));
 
-         double pinX    = avgY * 39.37 + 72.0;
-         double pinY    = -avgX * 39.37 + 72.0;
-         double heading = avgYaw - 90.0;
+         double pinX    = avgY * 39.37 + 72.0 + CAMERA_X_FUDGE;
+         double pinY    = -avgX * 39.37 + 72.0 + CAMERA_Y_FUDGE;
+         double heading = avgYaw - 90.0 + CAMERA_H_FUDGE;
 
          pinpointOdometry.setPosX(pinX, DistanceUnit.INCH);
          pinpointOdometry.setPosY(pinY, DistanceUnit.INCH);

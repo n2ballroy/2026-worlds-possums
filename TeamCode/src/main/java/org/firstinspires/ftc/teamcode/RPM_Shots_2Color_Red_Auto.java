@@ -44,7 +44,8 @@ public class RPM_Shots_2Color_Red_Auto extends LinearOpMode {
 
     // *** ONLY LINE TO CHANGE FOR RED ALLIANCE ***
     private static final boolean BLUE_ALLIANCE = false;
-    private static final double CAMERA_X_FUDGE = -2.0;
+    private static final double CAMERA_X_FUDGE = -3.0;
+    private static final double CAMERA_Y_FUDGE = + 3.0;
 
     // =====================================================================
     //  LAUNCHER LOGGING — set to true to enable, false to disable
@@ -775,7 +776,7 @@ public class RPM_Shots_2Color_Red_Auto extends LinearOpMode {
 
         // Limelight WCS (meters, field-center origin) → Pedro inches (audience-left corner)
         double camPedroX = avgY * 39.37 + 72.0 + CAMERA_X_FUDGE;  // +4 in empirical correction
-        double camPedroY = -avgX * 39.37 + 72.0;
+        double camPedroY = -avgX * 39.37 + 72.0 + CAMERA_Y_FUDGE;
 
         double   minDist  = Double.MAX_VALUE;
         double[] bestPose = null;

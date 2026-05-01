@@ -8,7 +8,11 @@
  import com.qualcomm.robotcore.hardware.CRServo;
  import com.qualcomm.robotcore.hardware.DcMotor;
  import com.qualcomm.robotcore.hardware.DcMotorEx;
+ import com.qualcomm.robotcore.hardware.DigitalChannel;
+ import com.qualcomm.robotcore.hardware.DistanceSensor;
  import com.qualcomm.robotcore.hardware.Servo;
+ import com.qualcomm.robotcore.hardware.TouchSensor;
+
  import com.qualcomm.robotcore.util.ElapsedTime;
 
  import org.firstinspires.ftc.robotcore.external.JavaUtil;
@@ -59,6 +63,8 @@
      private GoBildaPinpointDriver pinpointOdometry;
      private Limelight3A           limelight;
 
+     private TouchSensor turretHomeSensor;
+
      private Servo prism;
      private ElapsedTime runtime = new ElapsedTime();
 
@@ -91,6 +97,11 @@
      private ElapsedTime delayTimer     = new ElapsedTime();
      private int         Shooter_Speed  = 0;
      private double      Target_Ticks   = 0;
+
+     private int turretHomeTicks=0;
+
+     private int turretHomeingStep = 0;
+
 
 
      @Override
@@ -126,6 +137,7 @@
          prism            = hardwareMap.get(Servo.class,                "prism");
          pinpointOdometry = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
          limelight        = hardwareMap.get(Limelight3A.class,          "limelight");
+         turretHomeSensor = hardwareMap.get(TouchSensor.class,          "turret home");
  //
 
          frontLeft  = hardwareMap.get(DcMotor.class, "lf");
@@ -184,6 +196,7 @@
              pinpointOdometry.setPosY(0.0, DistanceUnit.INCH);
              pinpointOdometry.setHeading(90.0, AngleUnit.DEGREES);
              turret.setTargetPosition(0);
+             //turretInitOffsetTicks=0;
          }
 
          prism.setPosition(COLOR_BLUE);
@@ -192,7 +205,7 @@
 
          while (opModeIsActive()) {
              prismTimer();
-             turret.setVelocity(1800);
+                 turret.setVelocity(1800);
              Y  = gamepad1.left_stick_x;
              X  = gamepad1.left_stick_y;
              RX = -gamepad1.right_stick_x;
@@ -244,6 +257,7 @@
              if (gamepad1.a && !prevA) {
                  if(Aim == 0){
                      Aim = 1;
+                     turret.setVelocity(1800);
                  }
                  else{
                      Aim = 0;
@@ -252,13 +266,41 @@
              prevA     = gamepad1.a;
 
              if (Aim == 0) {
-                 turret.setTargetPosition(0);
+                 if(turretHomeingStep==0){
+                     turret.setTargetPosition(0);
+                 }
              } else {
                  turret.setTargetPosition((int) Math.min(Math.max(Target_Ticks, -1400), 1400));
              }
 
              if (gamepad1.b)      Shoot = 1;
              else if (gamepad1.x) Shoot = 0;
+
+ /***************            if(gamepad1.backWasPressed() && turretHomeingStep==0) {
+                Aim=0;
+                 turret.setVelocity(1800);
+                 turret.setTargetPosition(4000);
+                turretHomeingStep=1;
+             }
+             if(turretHomeingStep==1 && !turretHomeSensor.isPressed()) {
+                 //turret.setPower(0.0);
+                 turret.setTargetPosition(-4000);
+                 turretHomeingStep=2;
+             }
+             if(turretHomeingStep==2 && turretHomeSensor.isPressed()) {
+                 turret.setVelocity(180);
+                 //turret.setTargetPosition(-4000);
+                 turretHomeingStep=3;
+             }
+             if(turretHomeingStep==3 && !turretHomeSensor.isPressed()) {
+                 turretHomeTicks=turret.getTargetPosition()-2;
+                 turretInitOffsetTicks=0;
+                 //turret.setTargetPosition(turretHomeTicks);
+                 turret.setVelocity(1800);
+                 Aim=1;
+                 turretHomeingStep=0;
+             }
+*************/
 
              if (Shoot == 1) {
                  Leftshooter.setVelocity(Shooter_Speed);
@@ -282,9 +324,10 @@
              telemetry.addData("X",         X_Pinpoint);
              telemetry.addData("Y",         Y_Pinpoint);
              telemetry.addData("Heading deg",Yaw_Pinpoint);
-             telemetry.addData("Turret deg", (turret.getCurrentPosition()+turretInitOffsetTicks)/PedroRobotConstants.TURRET_TICKS_PER_DEG);
+             telemetry.addData("Turret deg", (turret.getCurrentPosition()+turretInitOffsetTicks-turretHomeTicks)/PedroRobotConstants.TURRET_TICKS_PER_DEG);
              telemetry.addData("Left velo", Leftshooter.getVelocity());
-             telemetry.update();
+             telemetry.addData("turret Home Step=",turretHomeingStep);
+            telemetry.update();
 
              pinpointOdometry.update();
          }

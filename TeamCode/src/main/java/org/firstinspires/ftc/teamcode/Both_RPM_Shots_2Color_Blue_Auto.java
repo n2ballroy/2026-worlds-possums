@@ -39,13 +39,14 @@ import java.util.List;
  *   DPAD RIGHT / LEFT — cycle the action for the selected step
  *   START             — lock in sequence and proceed to limelight seeding
  */
-@Autonomous(name = "RPM_Shots_2Color_Red_Auto", preselectTeleOp = "RPM_Shots_2Color_Red_TeleOp", group = "Match")
-public class RPM_Shots_2Color_Red_Auto extends LinearOpMode {
+@Autonomous(name = "Both_RPM_Shots_2Color_Blue_Auto", preselectTeleOp = "Both_RPM_Shots_2Color_Blue_TeleOp", group = "Match")
+public class Both_RPM_Shots_2Color_Blue_Auto extends LinearOpMode {
 
     // *** ONLY LINE TO CHANGE FOR RED ALLIANCE ***
-    private static final boolean BLUE_ALLIANCE = false;
-    private static final double CAMERA_X_FUDGE = -3.0;
-    private static final double CAMERA_Y_FUDGE = + 3.0;
+    private static final boolean BLUE_ALLIANCE = true;
+
+    private static final double CAMERA_X_FUDGE = 0.0;
+    private static final double CAMERA_Y_FUDGE = 0.0;
 
     // =====================================================================
     //  LAUNCHER LOGGING — set to true to enable, false to disable
@@ -81,7 +82,7 @@ public class RPM_Shots_2Color_Red_Auto extends LinearOpMode {
     private static final double BALL_LINE_MAX_POWER      = 0.5;
     private static final double BALL_LINE_X_MARGIN_IN    = 9.0;
     private static final double INTAKE_WALL_CLEARANCE_IN = 1.5;
-    private static final double SHOOTER_READY_MAX_WAIT_SEC       = 2.0;  // max wait per ball for RPM+direction
+    private static final double SHOOTER_READY_MAX_WAIT_SEC      = 3.0;  // max wait per ball for RPM+direction
     private static final double SHOT_DETECT_TIMEOUT_SEC  = 1.5;  // max feed time before assuming ball shot
     private static final double SHOT_RPM_DROP_FRACTION   = 0.80; // RPM below this fraction = shot detected
 
@@ -434,7 +435,7 @@ public class RPM_Shots_2Color_Red_Auto extends LinearOpMode {
                     endX = endFarX;
                     endY = endFarY;
                 }
-                driveToPose(endX, endY, 90.0, false);
+                driveToPose(endX, endY, 90.0, true);
                 autoPhase = 49;
                 break;
 
@@ -931,9 +932,9 @@ public class RPM_Shots_2Color_Red_Auto extends LinearOpMode {
                 || (autoPhase == 2 && autoSubStep == 4);
         if (follower.isBusy()) {
             prism.setPosition(FAST_RAINBOW);
-        } else if (inShootPhase && shootSubStep == 1) {  //waiting for shot detect
+        } else if (inShootPhase && shootSubStep == 1) {
             prism.setPosition(COLOR_GREEN);
-        } else if (inShootPhase && shootSubStep == 0) {  //waiting for rpm and direction
+        } else if (inShootPhase && shootSubStep == 0) {
             prism.setPosition(COLOR_BLUE);
         } else {
             prism.setPosition(0.0);
@@ -970,7 +971,8 @@ public class RPM_Shots_2Color_Red_Auto extends LinearOpMode {
 
     private boolean rpmAccurate() {
         double err = Math.abs(launcherVelocityCmd - rightLauncher.getVelocity());
-        if (err < 20 && launcherVelocityCmd > 933) {
+        double errLeft = Math.abs(launcherVelocityCmd - leftLauncher.getVelocity());
+        if (err < 20 && errLeft<20 && launcherVelocityCmd > 933) {
             if (rpmSettleTimerWasReset) { rpmSettleTimer.reset(); rpmSettleTimerWasReset = false; }
             return rpmSettleTimer.seconds() >= PedroRobotConstants.RPM_SETTLE_TIME_SECONDS;
         }

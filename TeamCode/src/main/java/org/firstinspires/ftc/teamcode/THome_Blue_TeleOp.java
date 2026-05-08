@@ -8,11 +8,8 @@
  import com.qualcomm.robotcore.hardware.CRServo;
  import com.qualcomm.robotcore.hardware.DcMotor;
  import com.qualcomm.robotcore.hardware.DcMotorEx;
- import com.qualcomm.robotcore.hardware.DigitalChannel;
- import com.qualcomm.robotcore.hardware.DistanceSensor;
  import com.qualcomm.robotcore.hardware.Servo;
  import com.qualcomm.robotcore.hardware.TouchSensor;
-
  import com.qualcomm.robotcore.util.ElapsedTime;
 
  import org.firstinspires.ftc.robotcore.external.JavaUtil;
@@ -44,9 +41,9 @@
   *   Pedro 0° = blue wall = Limelight +Y = Limelight 90°. Offset = -90°.
   *   This conversion is alliance-independent (both use absolute field coordinates).
   */
- // *** RED VERSION: change name="RPM_2Color_Blue_TeleOp" ***
- @TeleOp(name = "Both_RPM_Shots_2Color_Blue_TeleOp", group = "TeleOp")
- public class Both_RPM_Shots_2Color_Blue_TeleOp extends LinearOpMode {
+ // *** RED VERSION: change name="THome_Blue_TeleOp" ***
+ @TeleOp(name = "THome_Blue_TeleOp", group = "TeleOp")
+ public class THome_Blue_TeleOp extends LinearOpMode {
 
      // *** ONLY LINE TO CHANGE FOR RED ALLIANCE ***
      private static final boolean BLUE_ALLIANCE = true;
@@ -196,7 +193,8 @@
              pinpointOdometry.setPosY(0.0, DistanceUnit.INCH);
              pinpointOdometry.setHeading(90.0, AngleUnit.DEGREES);
              turret.setTargetPosition(0);
-             //turretInitOffsetTicks=0;
+             turretInitOffsetTicks=0;
+             sleep(500);
          }
 
          prism.setPosition(COLOR_BLUE);
@@ -205,7 +203,9 @@
 
          while (opModeIsActive()) {
              prismTimer();
+             if(turretHomeingStep==0) {
                  turret.setVelocity(1800);
+             }
              Y  = gamepad1.left_stick_x;
              X  = gamepad1.left_stick_y;
              RX = -gamepad1.right_stick_x;
@@ -217,9 +217,9 @@
              Delta__Y_    = Goal_Y - Y_Pinpoint;
              Target_Heading = Math.toDegrees(Math.atan2(Delta__Y_, Delta__X_));
              Distance       = Math.sqrt(Math.pow(Delta__X_, 2) + Math.pow(Delta__Y_, 2));
-             Shooter_Speed  = (int) ((1160.0 + Distance * 3.3) * SHOOTERGAIN);
+             Shooter_Speed  = (int) (1160.0 + Distance * 3.3);
 
-             if ((gamepad1.dpad_left || gamepad1.dpad_right) && dpadTimer.milliseconds()> 150) {  //about 6 deg/sec when held down
+             if ((gamepad1.dpad_left || gamepad1.dpad_right) && dpadTimer.milliseconds() > 150) {  //about 6 deg/sec when held down
                  if (gamepad1.dpad_left) Offset++;
                  else                   Offset--;
                  dpadTimer.reset();
